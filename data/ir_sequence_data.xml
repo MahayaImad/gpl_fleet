@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Séquence pour gpl.service.installation -->
+        <record id="seq_gpl_service_installation" model="ir.sequence">
+            <field name="name">Séquence Installation GPL</field>
+            <field name="code">gpl.service.installation</field>
+            <field name="prefix">INST/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_gpl_service_repair" model="ir.sequence">
+            <field name="name">Séquence de réparations GPL</field>
+            <field name="code">gpl.service.repair</field>
+            <field name="prefix">REP/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="vehicle_status_nouveau" model="gpl.vehicle.status">
+            <field name="name">Enregistré</field>
+            <field name="sequence">10</field>
+            <field name="description">Le véhicule est enregistré mais aucun service n'est planifié</field>
+            <field name="color">1</field>
+        </record>
+
+        <record id="vehicle_status_planifie" model="gpl.vehicle.status">
+            <field name="name">Rendez-vous fixé</field>
+            <field name="sequence">20</field>
+            <field name="description">Le véhicule a un rendez-vous programmé</field>
+            <field name="color">2</field>
+        </record>
+
+        <record id="vehicle_status_en_service" model="gpl.vehicle.status">
+            <field name="name">En service</field>
+            <field name="sequence">30</field>
+            <field name="description">Le véhicule est actuellement en cours de service</field>
+            <field name="color">3</field>
+        </record>
+
+        <record id="vehicle_status_attente_validation" model="gpl.vehicle.status">
+            <field name="name">En attente de validation</field>
+            <field name="sequence">40</field>
+            <field name="description">En attente de validation par l'ingénieur officiel</field>
+            <field name="color">4</field>
+        </record>
+
+        <record id="vehicle_status_termine" model="gpl.vehicle.status">
+            <field name="name">Terminé</field>
+            <field name="sequence">50</field>
+            <field name="description">Tous les services sont terminés et validés</field>
+            <field name="color">5</field>
+            <field name="is_done">True</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vue formulaire pour gpl.service.installation -->
+    <record id="view_form_gpl_service_installation" model="ir.ui.view">
+        <field name="name">gpl.service.installation.form</field>
+        <field name="model">gpl.service.installation</field>
+        <field name="arch" type="xml">
+            <form string="Installation GPL">
+                <header>
+                    <!-- Boutons d'action selon les étapes du flux-->
+                    <button name="action_validate_preparation"
+                            string="Valider préparation"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'draft'"/>
+
+                    <button name="action_create_picking"
+                            string="Créer bon de livraison"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'planned'"/>
+
+                    <button name="action_complete_installation"
+                            string="Terminer installation"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'in_progress'"/>
+
+                    <button name="action_invoice"
+                            string="Créer facture"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'done' or invoice_id"/>
+
+                    <button name="action_cancel"
+                            string="Annuler"
+                            type="object"
+                            invisible="state == 'cancel'"/>
+
+                    <button name="action_draft"
+                            string="Remettre en préparation"
+                            type="object"
+                            invisible="state == 'draft'"/>
+
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,planned,in_progress,done"/>
+
+                </header>
+
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_installation_lines"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-cubes">
+                            <div class="o_stat_info">
+                                <field name="products_count" class="o_stat_value"/>
+                                <span class="o_stat_text">Produits</span>
+                            </div>
+                        </button>
+                        <button name="action_view_picking"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-truck"
+                                invisible="picking_id == False">
+                            <span class="o_stat_text">Bon de livraison</span>
+                        </button>
+                        <button name="action_view_invoice"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-file-text-o"
+                                invisible="invoice_id == False">
+                            <span class="o_stat_text">Facture</span>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Détails de l'installation">
+                            <field name="date_service" required="1"/>
+                            <field name="date_planned" readonly="1" invisible="date_planned == False"/>
+                            <field name="date_completion" readonly="1" invisible="date_completion == False"/>
+                            <field name="vehicle_id" required="1" options="{'no_create': True, 'no_open': False}"/>
+                            <field name="client" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="Intervenant et matériel">
+                            <field name="technician_id" required="1" options="{'no_create': True}"/>
+                            <field name="picking_id" readonly="1" invisible="picking_id == False"/>
+                            <field name="invoice_id" readonly="1" invisible="invoice_id == False"/>
+                            <field name="total_amount" widget="monetary"
+                                   invisible="installation_line_ids == False"
+                                   options="{'currency_field': 'currency_id'}"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- <page string="Informations Réservoir" invisible="state == 'cancel'" >
+                            <group>
+                                <group string="Réservoir GPL">
+                                    <field name="reservoir_lot_id" options="{'no_create': True}"/>
+
+                                </group>
+                                <group string="État" >
+                                    <field name="reservoir_state" widget="badge"
+                                           decoration-success="reservoir_state == 'valid'"
+                                           decoration-warning="reservoir_state == 'expiring_soon'"
+                                           decoration-danger="reservoir_state == 'expired'"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-info" role="status">
+                                <strong>Note:</strong> Sélectionnez un réservoir existant ou ajoutez un produit de type réservoir GPL avec un numéro de série dans la liste des produits ci-dessous.
+                            </div>
+                        </page>
+                      <page string="Informations Réservoir" invisible="state == 'cancel'">
+                            <group>
+                                <group string="Réservoir GPL">
+                                    <field name="reservoir_lot_id" options="{'no_create': True}"/>
+                                    <field name="serial_number"
+                                           required="[('reservoir_lot_id', '=', False)]"
+                                           invisible="[('reservoir_lot_id', '!=', False)]"/>
+                                    <field name="certification_number" invisible="reservoir_lot_id != False"/>
+                                    <field name="certification_date" invisible="reservoir_lot_id != False"/>
+                                    <field name="expiry_date" readonly="1" force_save="1" invisible="expiry_date == False"/>
+                                </group>
+                                <group string="État" invisible="reservoir_lot_id == False">
+                                    <field name="reservoir_state" widget="badge"
+                                   decoration-success="reservoir_state == 'valid'"
+                                   decoration-warning="reservoir_state == 'expiring_soon'"
+                                   decoration-danger="reservoir_state == 'expired'"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-info" role="status" invisible="reservoir_lot_id">
+                                <strong>Note:</strong> Saisissez les informations du nouveau réservoir, ou sélectionnez un réservoir existant.
+                            </div>
+                        </page>-->
+
+                        <!-- Add to the products page in installation form view -->
+                        <page string="Produits utilisés">
+
+                            <field name="installation_line_ids">
+                                <tree editable="bottom">
+                                    <field name="product_id" options="{'no_create': True}" required="1"/>
+                                    <field name="available_lot_ids"/>
+                                    <field name="lot_id"
+                                       domain="[('id', 'in', available_lot_ids)]"
+                                       options="{'no_create': True}"
+                                       invisible="not product_id"
+                                       required="is_gpl_reservoir"/>
+                                    <field name="product_uom_qty"/>
+                                    <field name="serial_number" column_invisible="1"/>
+                                    <field name="is_gpl_reservoir" column_invisible="1"/>
+                                    <field name="qty_available" widget="badge"
+                                           decoration-danger="qty_available &lt; product_uom_qty"
+                                           decoration-success="qty_available &gt;= product_uom_qty"/>
+                                    <field name="forecast_availability" column_invisible="1"/>
+                                    <field name="price_unit"/>
+                                    <field name="price_subtotal" sum="Total"/>
+                                    <field name="status_color" column_invisible="1"/>
+                                    # TODO: Implémenter un boutton forcast stock similaire à stock._product_forecast_report
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes"
+                                   placeholder="Informations complémentaires concernant cette installation..."/>
+                        </page>
+                    </notebook>
+
+                    <div class="alert alert-info" role="status" invisible="state != 'draft'">
+                        <strong>Étape 1 :</strong>
+                        Complétez les informations de base et ajoutez les produits nécessaires à l'installation.
+                    </div>
+                    <div class="alert alert-primary" role="status" invisible="state != 'planned'">
+                        <strong>Étape 2 :</strong>
+                        Créez le bon de livraison pour réserver les produits nécessaires à l'installation.
+                    </div>
+                    <div class="alert alert-warning" role="status" invisible="state != 'in_progress'">
+                        <strong>Étape 3 :</strong>
+                        L'installation est en cours. Cliquez sur "Terminer installation" une fois complétée.
+                    </div>
+                    <div class="alert alert-success" role="status" invisible="state != 'done'">
+                        <strong>Installation terminée !</strong>
+                        Vous pouvez maintenant créer la facture client.
+                    </div>
+                    <div class="alert alert-danger" role="status" invisible="state != 'cancel'">
+                        <strong>Installation annulée.</strong>
+                        Vous pouvez la remettre en brouillon si nécessaire.
+                    </div>
+                </sheet>
+
+                <!-- Chatter (historique des modifications) -->
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+
+    <!-- Vue arbre (liste) pour gpl.service.installation -->
+    <record id="view_gpl_service_installation_tree" model="ir.ui.view">
+        <field name="name">gpl.service.installation.tree</field>
+        <field name="model">gpl.service.installation</field>
+        <field name="arch" type="xml">
+            <tree string="Installations GPL">
+                <field name="state" decoration-info="state == 'draft'"
+                       decoration-primary="state == 'planned'"
+                       decoration-warning="state == 'in_progress'"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'cancel'"/>
+                <field name="name"/>
+                <field name="client"/>
+                <field name="vehicle_id"/>
+                <field name="date_service"/>
+                <field name="technician_id"/>
+                <field name="reservoir_lot_id"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="total_amount" sum="Total" widget="monetary"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vue de recherche pour gpl.service.installation -->
+    <record id="view_gpl_service_installation_search" model="ir.ui.view">
+        <field name="name">gpl.service.installation.search</field>
+        <field name="model">gpl.service.installation</field>
+        <field name="arch" type="xml">
+            <search string="Recherche d'installations GPL">
+                <field name="name"/>
+                <field name="client"/>
+                <field name="vehicle_id"/>
+                <field name="technician_id"/>
+                <field name="reservoir_lot_id"/>
+                <separator/>
+                <filter string="Préparation" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Planifié" name="planned" domain="[('state', '=', 'planned')]"/>
+                <filter string="En cours" name="in_progress" domain="[('state', '=', 'in_progress')]"/>
+                <filter string="Terminé" name="done" domain="[('state', '=', 'done')]"/>
+                <filter string="Annulé" name="cancel" domain="[('state', '=', 'cancel')]"/>
+                <separator/>
+                <filter string="Ce mois" name="this_month" domain="[
+                    ('date_service', '&gt;=', (context_today().replace(day=1)).strftime('%Y-%m-%d')),
+                    ('date_service', '&lt;=', (context_today().replace(day=1, month=context_today().month+1, day=1) + datetime.timedelta(days=-1)).strftime('%Y-%m-%d'))
+                ]"/>
+                <filter string="Ce jour" name="today"
+                        domain="[('date_service', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="1" string="Regrouper par">
+                    <filter string="Client" name="client" context="{'group_by': 'client'}"/>
+                    <filter string="Véhicule" name="vehicle" context="{'group_by': 'vehicle_id'}"/>
+                    <filter string="Technicien" name="technician" context="{'group_by': 'technician_id'}"/>
+                    <filter string="État" name="state" context="{'group_by': 'state'}"/>
+                    <filter string="Date de service" name="date_service" context="{'group_by': 'date_service'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Vue calendrier pour gpl.service.installation -->
+    <record id="view_gpl_service_installation_calendar" model="ir.ui.view">
+        <field name="name">gpl.service.installation.calendar</field>
+        <field name="model">gpl.service.installation</field>
+        <field name="arch" type="xml">
+            <calendar string="Installations GPL" date_start="date_service" color="state" mode="month">
+                <field name="name"/>
+                <field name="client"/>
+                <field name="vehicle_id"/>
+                <field name="technician_id"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- Vue kanban pour gpl.service.installation -->
+    <record id="view_gpl_service_installation_kanban" model="ir.ui.view">
+        <field name="name">gpl.service.installation.kanban</field>
+        <field name="model">gpl.service.installation</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" records_draggable="0" class="o_kanban_small_column" sample="1">
+                <field name="name"/>
+                <field name="client"/>
+                <field name="vehicle_id"/>
+                <field name="technician_id"/>
+                <field name="date_service"/>
+                <field name="state"/>
+                <field name="total_amount"/>
+                <field name="products_count"/>
+                <field name="currency_id"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click">
+                            <div class="o_kanban_record_top">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title">
+                                        <span>
+                                            <t t-esc="record.name.value"/>
+                                        </span>
+                                    </strong>
+                                    <small class="o_kanban_record_subtitle">
+                                        <t t-esc="record.vehicle_id.value"/>
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="o_kanban_record_body">
+                                <div>
+                                    <strong>Client:</strong>
+                                    <t t-esc="record.client.value"/>
+                                </div>
+                                <div>
+                                    <strong>Date:</strong>
+                                    <t t-esc="record.date_service.value"/>
+                                </div>
+                                <div>
+                                    <strong>Technicien:</strong>
+                                    <t t-esc="record.technician_id.value"/>
+                                </div>
+                                <div t-if="record.products_count.raw_value > 0" class="mt8">
+                                    <span class="o_value">
+                                        <t t-esc="record.products_count.value"/>
+                                    </span>
+                                    <span class="o_label">produits</span>
+                                </div>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <div class="oe_kanban_bottom_left">
+                                    <span t-if="record.total_amount.raw_value" class="badge badge-pill">
+                                        <t t-esc="record.total_amount.value"/>
+                                    </span>
+                                </div>
+                                <div class="oe_kanban_bottom_right">
+                                    <field name="state" widget="label_selection" options="{'classes': {
+                                        'draft': 'bg-info',
+                                        'planned': 'bg-primary',
+                                        'in_progress': 'bg-warning',
+                                        'done': 'bg-success',
+                                        'cancel': 'bg-danger'}}"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Vue pivot pour gpl.service.installation -->
+    <record id="view_gpl_service_installation_pivot" model="ir.ui.view">
+        <field name="name">gpl.service.installation.pivot</field>
+        <field name="model">gpl.service.installation</field>
+        <field name="arch" type="xml">
+            <pivot string="Analyse des installations GPL" sample="1">
+                <field name="date_service" type="row" interval="month"/>
+                <field name="technician_id" type="col"/>
+                <field name="total_amount" type="measure"/>
+                <field name="products_count" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Actions et menus -->
+    <record id="action_gpl_service_installation" model="ir.actions.act_window">
+        <field name="name">Installations GPL</field>
+        <field name="res_model">gpl.service.installation</field>
+        <field name="view_mode">kanban,tree,form,calendar,pivot</field>
+
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Créer une nouvelle installation GPL
+            </p>
+            <p>
+                Gérez vos installations de réservoirs GPL, les produits utilisés et suivez l'état d'avancement.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action pour ouvrir les bons de livraison liés -->
+    <record id="act_open_picking_related" model="ir.actions.act_window">
+        <field name="name">Bon de livraison</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">form</field>
+        <field name="domain">[('id', '=', active_id)]</field>
+        <field name="context">{'create': False}</field>
+    </record>
+
+    <!-- Action pour ouvrir les factures liées -->
+    <record id="act_open_invoice_related" model="ir.actions.act_window">
+        <field name="name">Facture</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">form</field>
+        <field name="domain">[('id', '=', active_id)]</field>
+        <field name="context">{'create': False}</field>
+    </record>
+
+    <!-- Vue arbre spécifique pour les lignes d'installation -->
+<record id="view_gpl_installation_line_tree" model="ir.ui.view">
+    <field name="name">gpl.installation.line.tree</field>
+    <field name="model">gpl.installation.line</field>
+    <field name="arch" type="xml">
+        <tree string="Produits utilisés" editable="bottom">
+            <field name="product_id" options="{'no_create': True}" required="1"/>
+            <field name="lot_id" domain="[('id', 'in', available_lot_ids)]" options="{'no_create': True}"/>
+            <field name="product_uom_qty"/>
+            <field name="serial_number" readonly="1"/>
+            <field name="is_gpl_reservoir" invisible="1"/>
+            <field name="qty_available" widget="badge"
+                   decoration-danger="qty_available &lt; product_uom_qty"
+                   decoration-success="qty_available &gt;= product_uom_qty"/>
+            <field name="price_unit"/>
+            <field name="price_subtotal" sum="Total"/>
+            <field name="available_lot_ids" invisible="1"/>
+        </tree>
+    </field>
+</record>
+
+    <!-- Sous-menu pour les opérations -->
+    <menuitem id="menu_gpl_operations" name="Opérations" parent="gpl_menu_root" sequence="10"/>
+
+    <!-- Menu pour les installations -->
+    <menuitem id="menu_gpl_service_installation" name="Installations" action="action_gpl_service_installation"
+              parent="menu_gpl_operations" sequence="10"/>
+</odoo>

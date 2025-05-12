@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id='gpl_fleet_vehicle_view_form' model='ir.ui.view'>
+        <field name="name">gpl.fleet.vehicle.form</field>
+        <field name="model">gpl.vehicle</field>
+        <field name="arch" type="xml">
+            <form string="Vehicle" js_class="fleet_form">
+                <header>
+                    <!-- Ajout du statut en haut du formulaire -->
+                    <field name="status_id" widget="statusbar" options="{'clickable': '1'}"/>
+                    <!-- Bouton pour créer une installation à partir du véhicule -->
+                    <button name="action_create_installation"
+                            string="Installation GPL"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="next_service_type != 'installation' or appointment_date == False"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="image_128" widget='image' class="oe_avatar"/>
+                    <div class="oe_title">
+                        <label for="license_plate"/>
+                        <h2>
+                            <field name="license_plate" class="oe_inline" placeholder="ex. 012345 125 05"/>
+                        </h2>
+                        <label for="model_id"/>
+                        <h2>
+                            <field name="model_id" placeholder="ex. Hyundai I10" class="w-100"/>
+                        </h2>
+
+                        <label for="tag_ids" class="me-3"/>
+                        <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}"/>
+                    </div>
+
+                    <group col="2">
+                        <div>
+                        <group string="Propréitaire">
+                            <field name="active" invisible="1"/>
+                            <field name="vehicle_type" invisible="1"/>
+                            <field name="client_id" />
+                            <field name="client_phone" readonly="1"/>
+                        </group>
+                        <group string ="Planification des services">
+                                <group>
+                                    <field name="next_service_type"/>
+                                    <field name="appointment_date"/>
+                                </group>
+                                <group>
+                                    <field name="engineer_validation_date" invisible="  [('next_service_type', '!=', 'validation')]"/>
+                                    <field name="validation_certificate" invisible=" [('next_service_type', '!=', 'validation')]"/>
+                                </group>
+                        </group></div>
+                        <group string="Véhicule">
+                            <field name="vin_sn"/>
+                            <field name="model_year"/>
+                            <field name="color"/>
+                            <field name="transmission"/>
+                            <label for="odometer" invisible="vehicle_type != 'car'"/>
+                            <div class="o_row o_hr_narrow_field" invisible="vehicle_type != 'car'">
+                                <field name="odometer"/>
+                                <field name="odometer_unit"/>
+                            </div>
+                            <field name="category_id"/>
+                        </group>
+                    </group>
+                    <field name="vehicle_properties" columns="2"/>
+                </sheet>
+                <div class="oe_chatter">
+                <field name="message_follower_ids" widget="mail_followers"/>
+                <field name="message_ids" widget="mail_thread"/>
+            </div>
+                 <footer>
+                <button name="%(gpl_service_installation_action)d" type="action" string="Installation GPL" class="oe_stat_button" icon="fa-cogs"/>
+            </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id='gpl_fleet_vehicle_view_tree' model='ir.ui.view'>
+        <field name="name">gpl.vehicle.tree</field>
+        <field name="model">gpl.vehicle</field>
+        <field name="arch" type="xml">
+            <tree string="Vehicle"
+                multi_edit="1"
+                sample="1">
+                <field name="active" column_invisible="True"/>
+                <field name="license_plate" readonly="1"/>
+                <field name="model_id" widget="many2one_avatar" readonly="1"/>
+                <!-- Ajout du champ status_id dans la vue liste -->
+                <field name="status_id" decoration-success="status_id.is_done"/>
+                <field name="next_service_type"/>
+                <field name="appointment_date" optional="show"/>
+                <field name="category_id"/>
+                <field name="client_id" readonly="1" optional="show"/>
+                <field name="vin_sn" readonly="1" optional="hide"/>
+                <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}" readonly="1"/>
+                <field name="vehicle_properties"/>
+                <field name="activity_exception_decoration" widget="activity_exception"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="gpl_fleet_vehicle_view_search" model="ir.ui.view">
+        <field name="name">gpl.vehicle.search</field>
+        <field name="model">gpl.vehicle</field>
+        <field name="arch" type="xml">
+            <search string="All vehicles">
+                <field string="Vehicle" name="name" filter_domain="['|', ('name', 'ilike', self), ('license_plate', 'ilike', self)]"/>
+                <field string="Client" name="client_id" filter_domain="[
+                    '|', '|',
+                    ('client_id', 'ilike', self),
+                ]"/>
+                <field string="Model" name="model_id"/>
+                <field string="License Plate" name="license_plate"/>
+                <field name="tag_ids"/>
+                <!-- Ajout du filtre pour le status -->
+                <field name="status_id"/>
+                <field name="next_service_type"/>
+                <field string="Properties" name="vehicle_properties"/>
+                <filter string="Bikes" name="bikes" domain="[('vehicle_type', '=', 'bike')]"/>
+                <filter string="Cars" name="cars" domain="[('vehicle_type', '=', 'car')]"/>
+                <!-- Ajout de filtres pour les rendez-vous -->
+                <filter string="Rendez-vous aujourd'hui" name="appointment_today" domain="[('appointment_date', '>=', context_today().strftime('%Y-%m-%d 00:00:00')), ('appointment_date', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                <filter string="Rendez-vous cette semaine" name="appointment_this_week" domain="[('appointment_date', '>=', (context_today() + relativedelta(weeks=-1, days=1, weekday=0)).strftime('%Y-%m-%d')), ('appointment_date', '&lt;', (context_today() + relativedelta(weeks=0, days=1, weekday=0)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter invisible="1" string="Late Activities" name="activities_overdue"
+                    domain="[('my_activity_date_deadline', '&lt;', context_today().strftime('%Y-%m-%d'))]"
+                    help="Show all records which has next action date is before today"/>
+                <filter invisible="1" string="Today Activities" name="activities_today"
+                    domain="[('my_activity_date_deadline', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter invisible="1" string="Future Activities" name="activities_upcoming_all"
+                    domain="[('my_activity_date_deadline', '&gt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="1" string="Group By">
+                    <filter string="Status" name="groupby_status" context="{'group_by': 'status_id'}"/>
+                    <filter string="Model" name="groupby_model" context="{'group_by': 'model_id'}"/>
+                    <filter string="Brand" name="groupby_make" context="{'group_by': 'brand_id'}"/>
+                    <filter string="Next Service" name="groupby_service_type" context="{'group_by': 'next_service_type'}"/>
+                </group>
+           </search>
+        </field>
+    </record>
+
+    <record id="gpl_vehicle_status_kanban_view" model="ir.ui.view">
+    <field name="name">gpl.vehicle.kanban.status</field>
+    <field name="model">gpl.vehicle</field>
+    <field name="arch" type="xml">
+        <kanban default_group_by="status_id"
+                records_draggable="1"
+                class="o_kanban_small_column"
+                kanban_archivable="false"
+                group_edit="false"
+                group_create="false"
+                group_delete="false">
+            <field name="status_id"/>
+            <field name="color"/>
+            <field name="next_service_type"/>
+            <field name="appointment_date"/>
+            <field name="installation_id"/>
+            <field name="client_id"/>
+            <field name="license_plate"/>
+            <field name="model_id"/>
+            <!-- Add these fields for brand information -->
+            <field name="image_128" widget='image' class="oe_avatar"/>
+
+            <templates>
+                <t t-name="kanban-box">
+                    <div t-attf-class="oe_kanban_global_click oe_kanban_card"
+                         t-attf-style="border-left: 5px solid #{record.color.raw_value ? record.color.raw_value : '#6c757d'};">
+                         <!-- Top menu positioned absolutely at the right -->
+                        <div class="o_dropdown_kanban dropdown position-absolute top-0 end-0">
+                            <a class="dropdown-toggle o-no-caret btn" role="button" data-bs-toggle="dropdown" data-bs-display="static" href="#" aria-label="Menu déroulant" title="Menu déroulant">
+                                <span class="fa fa-ellipsis-v"/>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end" role="menu">
+                                <a role="menuitem" type="edit" class="dropdown-item">Modifier</a>
+                                <a role="menuitem" type="delete" class="dropdown-item">Supprimer</a>
+                                <div role="separator" class="dropdown-divider"/>
+                                <ul class="oe_kanban_colorpicker" data-field="color"/>
+                            </div>
+                        </div>
+
+                        <!-- Card Body with Better Layout -->
+                        <div class="oe_kanban_content p-2">
+                             <!-- Vehicle Brand Icon and Info -->
+                            <div class="d-flex align-items-right mb-2">
+                                <div t-if="record.image_128.raw_value" class="me-2">
+                                    <field name="image_128" widget='image' height="40" widht ="40"/>
+                                </div>
+                                <div class="align-items-right ms-3">
+                                    <strong><i class="fa fa-car me-2"/> <field name="license_plate"/></strong><br/>
+                                    <small t-if="record.client_id.raw_value"><i class="fa fa-user me-2" title="utilisateur"/> <span t-esc="record.client_id.value"/></small>
+                                </div>
+                            </div>
+
+                            <!-- Vehicle details in a cleaner layout -->
+                            <div class="d-flex flex-column">
+
+                                <!-- Status Badge -->
+                               <div t-if="record.next_service_type.raw_value" class="mb-1">
+    <!-- Dynamically set badge color based on next_service_type's value -->
+                                    <span t-attf-class="badge rounded-pill  text-white #{
+                                        record.next_service_type.raw_value and record.next_service_type.value == 'Installation GPL' ? 'bg-success' :
+                                        record.next_service_type.raw_value and record.next_service_type.value == 'Réparation' ? 'bg-success' :
+                                        record.next_service_type.raw_value and record.next_service_type.value == 'Maintenance' ? 'bg-warning' :
+                                        record.next_service_type.raw_value and record.next_service_type.value == 'Inspection' ? 'bg-info' : 'bg-secondary'
+                                    }" t-esc="record.next_service_type.value"/>
+                                </div>
+
+                                <!-- Appointment Date -->
+                                <div t-if="record.appointment_date.raw_value" class="mb-1">
+                                    <small><i class="fa fa-calendar me-1" title="Date du RDV"/>  <span t-esc="record.appointment_date.value"/></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </templates>
+        </kanban>
+    </field>
+</record>
+
+    <!-- Ajout d'une vue calendrier pour les rendez-vous -->
+    <record id="gpl_fleet_vehicle_view_calendar" model="ir.ui.view">
+        <field name="name">gpl.vehicle.calendar</field>
+        <field name="model">gpl.vehicle</field>
+        <field name="arch" type="xml">
+            <calendar string="Rendez-vous véhicules" date_start="appointment_date" color="next_service_type" mode="month">
+                <field name="name"/>
+                <field name="client_id"/>
+                <field name="next_service_type"/>
+                <field name="license_plate"/>
+            </calendar>
+        </field>
+    </record>
+
+    <record id="gpl_fleet_vehicle_view_activity" model="ir.ui.view">
+        <field name="name">gpl.vehicle.activity</field>
+        <field name="model">gpl.vehicle</field>
+        <field name="arch" type="xml">
+            <activity string="Vehicles">
+                <field name="license_plate"/>
+                <field name="id"/>
+                <templates>
+                    <div t-name="activity-box">
+                        <img class="rounded-circle" t-att-src="activity_image('gpl.vehicle', 'image_128', record.id.raw_value)" role="img" t-att-title="record.id.value" t-att-alt="record.id.value"/>
+                        <div class="ms-2">
+                            <field name="license_plate" display="full" class="o_text_block"/>
+                            <field name="model_id" muted="1" class="o_text_block"/>
+                        </div>
+                    </div>
+                </templates>
+            </activity>
+        </field>
+    </record>
+
+    <record id="gpl_fleet_vehicle_view_pivot" model="ir.ui.view">
+       <field name="model">gpl.vehicle</field>
+       <field name="arch" type="xml">
+            <pivot>
+                <field name="brand_id" type="col" />
+                <field name="model_id" type="row" />
+                <field name="license_plate" type="row" />
+                <field name="status_id" type="row" />
+                <field name="next_service_type" type="row" />
+            </pivot>
+        </field>
+    </record>
+
+    <record id='gpl_fleet_vehicle_action' model='ir.actions.act_window'>
+        <field name="name">Véhicules</field>
+        <field name="res_model">gpl.vehicle</field>
+        <field name="view_mode">kanban,tree,form,calendar,pivot,activity</field>
+        <field name="context">{'search_default_groupby_status': 1}</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Prêt à gérer votre flotte plus efficacement ?
+          </p><p>
+            Créons votre premier véhicule.
+          </p>
+        </field>
+    </record>
+
+
+    <!-- Définition d'une action spécifique pour la vue Kanban par statut -->
+    <record id='gpl_fleet_vehicle_status_action' model='ir.actions.act_window'>
+        <field name="name">Suivi des Véhicules</field>
+        <field name="res_model">gpl.vehicle</field>
+        <field name="view_mode">kanban,form</field>
+        <field name="view_id" ref="gpl_vehicle_status_kanban_view"/>
+        <field name="context">{'search_default_groupby_status': 1}</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Gérez le flux de vos véhicules
+          </p><p>
+            Suivez l'évolution de chaque véhicule dans votre processus de service.
+          </p>
+        </field>
+    </record>
+
+    <menuitem name="Atelier GPL" parent="gpl_menu_root" id="gpl_fleet_vehicles" sequence="2" />
+    <menuitem action="gpl_fleet_vehicle_action" parent="gpl_fleet_vehicles" name="Véhicules"
+        id="gpl_fleet_vehicle_menu" sequence="0"/>
+    <menuitem action="gpl_fleet_vehicle_status_action" parent="gpl_fleet_vehicles" name="Suivi du Flux"
+        id="gpl_fleet_vehicle_status_menu" sequence="1"/>
+
+   <!-- Autres vues pour les sous-modèles... -->
+
+   <!-- Vue pour la gestion des statuts -->
+   <record id='gpl_vehicle_status_view_tree' model='ir.ui.view'>
+        <field name="name">gpl.vehicle.status.tree</field>
+        <field name="model">gpl.vehicle.status</field>
+        <field name="arch" type="xml">
+            <tree string="Statuts" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name" />
+                <field name="description" />
+                <field name="is_done" />
+                <field name="color" widget="color_picker"/>
+                <field name="fold" />
+            </tree>
+        </field>
+    </record>
+
+    <record id='gpl_vehicle_status_view_form' model='ir.ui.view'>
+        <field name="name">gpl.vehicle.status.form</field>
+        <field name="model">gpl.vehicle.status</field>
+        <field name="arch" type="xml">
+            <form string="Statut du Véhicule">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="description"/>
+                        <field name="is_done"/>
+                        <field name="color" widget="color_picker"/>
+                        <field name="fold"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id='gpl_vehicle_status_action' model='ir.actions.act_window'>
+        <field name="name">Statuts des Véhicules</field>
+        <field name="res_model">gpl.vehicle.status</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Créez un nouveau statut
+          </p><p>
+            Vous pouvez personnaliser les statuts disponibles pour suivre l'évolution
+            de chaque véhicule dans votre processus de service.
+          </p>
+        </field>
+    </record>
+
+    <menuitem name="Configuration" parent="gpl_menu_root" id="gpl_fleet_configuration" sequence="100" />
+    <menuitem name="Véhicule" parent="gpl_fleet_configuration" id="gpl_fleet_vehicles_configuration" sequence="30" />
+    <menuitem action="gpl_vehicle_status_action" parent="gpl_fleet_vehicles_configuration" id="gpl_vehicle_status_menu" sequence="5"/>
+
+    <record id="gpl_fleet_vehicle_tag_view_view_form" model="ir.ui.view">
+        <field name="name">gpl.vehicle.tag.form</field>
+        <field name="model">gpl.vehicle.tag</field>
+        <field name="arch" type="xml">
+            <form string="Vehicle Tags">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="gpl_fleet_vehicle_tag_view_view_tree" model="ir.ui.view">
+        <field name="name">gpl.vehicle.tag.tree</field>
+        <field name="model">gpl.vehicle.tag</field>
+        <field name="arch" type="xml">
+            <tree string="Vehicle Tags" editable="bottom">
+                <field name="name"/>
+                <field name="color" widget="color_picker"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="gpl_vehicle_tag_action" model="ir.actions.act_window">
+        <field name="name">Tags</field>
+        <field name="res_model">gpl.vehicle.tag</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Add a new tag
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="gpl_fleet_vehicle_tag_menu" parent="gpl_fleet_vehicles_configuration" action="gpl_fleet_vehicle_tag_action" sequence="20"/>
+
+    <record id="gpl_vehicle_today_appointments_view_tree" model="ir.ui.view">
+        <field name="name">gpl.vehicle.today.appointments.tree</field>
+        <field name="model">gpl.vehicle</field>
+        <field name="arch" type="xml">
+            <tree string="Rendez-vous du jour" decoration-info="next_service_type == 'installation'">
+                <field name="name"/>
+                <field name="license_plate"/>
+                <field name="client_id"/>
+                <field name="appointment_date"/>
+                <field name="next_service_type"/>
+                <field name="status_id"/>
+                <button name="action_create_installation"
+                        string="Démarrer service"
+                        type="object"
+                        icon="fa-play"
+                        invisible=" [('next_service_type', '!=', 'installation')]"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_today_appointments" model="ir.actions.act_window">
+        <field name="name">Rendez-vous du jour</field>
+        <field name="res_model">gpl.vehicle</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="gpl_vehicle_today_appointments_view_tree"/>
+        <field name="domain">[
+            ('appointment_date', '>=', context_today().strftime('%Y-%m-%d 00:00:00')),
+            ('appointment_date', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))
+        ]</field>
+        <field name="context">{'search_default_next_service_type': 'installation'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Pas de rendez-vous pour aujourd'hui
+            </p>
+        </field>
+    </record>
+
+    <!-- Ajout au menu -->
+    <menuitem id="menu_today_appointments"
+              name="RDV du jour"
+              parent="gpl_fleet_vehicles"
+              action="action_today_appointments"
+              sequence="2"/>
+</odoo>

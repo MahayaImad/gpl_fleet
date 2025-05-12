@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id='gpl_fleet_vehicle_action' model='ir.actions.act_window'>
+        <field name="name">Vehicles</field>
+        <field name="res_model">fleet.vehicle</field>
+        <field name="view_mode">kanban,tree,form,pivot,activity</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Ready to manage your fleet more efficiently?
+          </p><p>
+            Let's create your first vehicle.
+          </p>
+        </field>
+    </record>
+    <menuitem id="gpl_menu_root" name="Installation GPL" sequence="1" />
+
+    <menuitem name="Atelier GPL" parent="gpl_menu_root" id="gpl_fleet_vehicles" sequence="2" />
+    <menuitem action="gpl_fleet_vehicle_action" parent="gpl_fleet_vehicles" name="GPL"
+        id="gpl_fleet_vehicle_menu" sequence="0"/>
+
+    <record id='gpl_fleet_vehicle_odometer_action' model='ir.actions.act_window'>
+        <field name="name">Odometers</field>
+        <field name="res_model">fleet.vehicle.odometer</field>
+        <field name="view_mode">tree,kanban,form,graph</field>
+        <field name="context"></field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Create a new odometer log
+          </p><p>
+            You can add various odometer entries for all vehicles.
+          </p>
+        </field>
+    </record>
+
+    <menuitem action="gpl_fleet_vehicle_odometer_action" parent="gpl_fleet_vehicles" id="gpl_fleet_vehicle_odometer_menu"  sequence="10"/>
+
+    <record id='gpl_fleet_vehicle_service_types_action' model='ir.actions.act_window'>
+        <field name="name">Types</field>
+        <field name="res_model">fleet.service.type</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{"search_default_groupby_category" : True}</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Create a new type of service
+          </p><p>
+            Each service can used in contracts, as a standalone service or both.
+          </p>
+        </field>
+    </record>
+    <menuitem id="gpl_fleet_configuration" name="Configuration" parent="gpl_menu_root" sequence="6"/>
+    <menuitem name="Services" parent="gpl_fleet_configuration" id="gpl_fleet_services_configuration" sequence="20" />
+    <menuitem action="gpl_fleet_vehicle_service_types_action" parent="gpl_fleet_services_configuration" name="Types"
+        id="gpl_fleet_vehicle_service_types_menu" sequence="1" />
+
+
+    <record id='gpl_fleet_vehicle_state_action' model='ir.actions.act_window'>
+        <field name="name">Status</field>
+        <field name="res_model">fleet.vehicle.state</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Create a new vehicle status
+          </p><p>
+            You can customize available status to track the evolution of
+            each vehicle. Example: active, being repaired, sold.
+          </p>
+        </field>
+    </record>
+
+    <menuitem name="Vehicle" parent="gpl_fleet_configuration" id="gpl_fleet_vehicles_configuration" sequence="30" />
+    <menuitem action="gpl_fleet_vehicle_state_action" parent="gpl_fleet_vehicles_configuration" id="gpl_fleet_vehicle_state_menu" sequence="10" />
+
+    <record id="gpl_fleet_vehicle_tag_action" model="ir.actions.act_window">
+        <field name="name">Tags</field>
+        <field name="res_model">gpl.vehicle.tag</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Add a new tag
+            </p>
+        </field>
+    </record>
+
+        <record id='gpl_fleet_vehicle_model_brand_action' model='ir.actions.act_window'>
+        <field name="name">Manufacturers</field>
+        <field name="res_model">fleet.vehicle.model.brand</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Create a new manufacturer
+          </p>
+        </field>
+    </record>
+
+    <!-- Model Category -->
+    <record id='gpl_fleet_vehicle_model_category_action' model='ir.actions.act_window'>
+        <field name="name">Categories</field>
+        <field name="res_model">fleet.vehicle.model.category</field>
+        <field name="view_mode">tree</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new category
+            </p>
+            <p>
+                Categories will help you manage your fleet more efficiently and arrange your vehicles.
+            </p>
+        </field>
+    </record>
+
+
+    <record id='gpl_fleet_vehicle_model_action' model='ir.actions.act_window'>
+        <field name="name">Models</field>
+        <field name="res_model">fleet.vehicle.model</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{"search_default_groupby_brand" : True,}</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Create a new model
+          </p><p>
+            You can define several models (e.g. A3, A4) for each make (Audi).
+          </p>
+        </field>
+    </record>
+
+
+    <menuitem id="gpl_fleet_vehicle_tag_menu" parent="gpl_fleet_vehicles_configuration" action="gpl_fleet_vehicle_tag_action" sequence="20"/>
+
+    <menuitem name="Models" parent="gpl_fleet_configuration" id="gpl_fleet_models_configuration" sequence="10"/>
+    <menuitem action="gpl_fleet_vehicle_model_brand_action" parent="gpl_fleet_models_configuration" id="gpl_fleet_vehicle_model_brand_menu" sequence="1"/>
+    <menuitem action="gpl_fleet_vehicle_model_action" parent="gpl_fleet_models_configuration" id="gpl_fleet_vehicle_model_menu" sequence="5"/>
+    <menuitem action="gpl_fleet_vehicle_model_category_action" parent="gpl_fleet_models_configuration" id="gpl_fleet_vehicle_model_category_menu" sequence="10"/>
+        <!-- Menu pour accéder aux modèles via GPL
+    <menuitem id="gpl_vehicle_model_menu"
+              name="Models"
+              parent="gpl_menu_configuration"
+              action="action_gpl_vehicle_model"
+              sequence="1"/> -->
+</odoo>

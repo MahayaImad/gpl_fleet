@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+gpl_fleet.access_gpl_reservoir_fabricant,access_gpl_reservoir_fabricant,gpl_fleet.model_gpl_reservoir_fabricant,base.group_user,1,1,1,1
+gpl_fleet.access_gpl_vehicle,access_gpl_vehicle,gpl_fleet.model_gpl_vehicle,base.group_user,1,1,1,1
+gpl_fleet.access_gpl_vehicle_tag,access_gpl_vehicle_tag,gpl_fleet.model_gpl_vehicle_tag,base.group_user,1,1,1,1
+gpl_fleet.access_gpl_vehicle_odometer,access_gpl_vehicle_odometer,gpl_fleet.model_gpl_vehicle_odometer,base.group_user,1,1,1,1
+gpl_fleet.access_gpl_service_installation,access_gpl_service_installation,gpl_fleet.model_gpl_service_installation,base.group_user,1,1,1,1
+gpl_fleet.access_gpl_installation_line,access_gpl_installation_line,gpl_fleet.model_gpl_installation_line,base.group_user,1,1,1,1
+access_gpl_vehicle_status_user,gpl.vehicle.status.user,model_gpl_vehicle_status,base.group_user,1,1,1,1
+gpl_fleet.access_gpl_service_repair,access_gpl_service_repair,gpl_fleet.model_gpl_service_repair,base.group_user,1,1,1,1
+gpl_fleet.access_gpl_repair_line,access_gpl_repair_line,gpl_fleet.model_gpl_repair_line,base.group_user,1,1,1,1
+gpl_fleet.access_gpl_repair_add_products,access_gpl_repair_add_products,gpl_fleet.model_gpl_repair_add_products,base.group_user,1,1,1,1

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <menuitem name="Stock" parent="gpl_menu_root" id="gpl_reservoir_menu_root" sequence="3" />
+
+    <menuitem name="Vue d'ensemble" parent="gpl_reservoir_menu_root" id="menu_gpl_stock_general_vue" sequence="10" />
+    <menuitem id="menu_gpl_stock_general_vue_resume"
+              name="Aperçu du stock"
+              parent="menu_gpl_stock_general_vue"
+              action="stock.stock_picking_type_action" sequence="1" />
+
+    <menuitem name="En Stock" parent="gpl_reservoir_menu_root" id="gpl_reservoir_menu_stock_etat" sequence="20" />
+    <menuitem id="menu_gpl_products_state"
+              name="Tous les produits"
+              parent="gpl_reservoir_menu_stock_etat"
+              action="product.product_template_action" sequence="2" />
+
+    <record id="action_gpl_reservoir_products" model="ir.actions.act_window">
+        <field name="name">Réservoirs GPL</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="view_id" eval="False"/>
+        <field name="domain">[('is_reservoir', '=', True)]</field>
+    </record>
+
+    <menuitem id="menu_gpl_lot_state"
+              name="Lots/Numéros de série"
+              parent="gpl_reservoir_menu_stock_etat"
+              action="stock.action_production_lot_form" sequence="3" />
+
+
+    <menuitem id="menu_gpl_reservoir_products"
+          name="Réservoirs"
+          parent="gpl_reservoir_menu_stock_etat"
+          action="gpl_fleet.action_gpl_reservoir_products"
+          sequence="4"/>
+
+    <record id="action_new_reservoir_product" model="ir.actions.act_window">
+        <field name="name">Nouveau Produit</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+    <menuitem name="Création" parent="gpl_reservoir_menu_root" id="gpl_reservoir_menu_stock_creation" sequence="30" />
+    <menuitem id="menu_new_reservoir_product"
+          name="Nouveau Produit"
+          parent="gpl_reservoir_menu_stock_creation"
+          action="gpl_fleet.action_new_reservoir_product"
+          sequence="3"/>
+
+
+    <record id="product_template_form_view_reservoir_inherit" model="ir.ui.view">
+    <field name="name">product.template.form.reservoir.inherit</field>
+    <field name="model">product.template</field>
+    <field name="inherit_id" ref="product.product_template_form_view"/>
+    <field name="arch" type="xml">
+
+        <!-- Ajouter le toggle dans l'onglet général -->
+        <xpath expr="//div[@name='options']" position="replace">
+            <div name="options">
+                <span class="d-inline-block">
+                    <field name="sale_ok"/>
+                    <label for="sale_ok"/>
+                </span>
+                <span class="d-inline-block">
+                    <field name="purchase_ok"/>
+                    <label for="purchase_ok"/>
+                </span>
+                <span class="d-inline-block">
+                    <field name="is_gpl_reservoir" readonly="0"
+                           modifiers="{'readonly': [['is_reservoir_readonly', '=', true]]}"/>
+                    <label for="is_gpl_reservoir"/>
+                </span>
+                <span class="d-inline-block">
+                    <field name="is_gpl_kit" readonly="1"/>
+                    <label for="is_gpl_kit"/>
+                </span>
+            </div>
+        </xpath>
+
+
+        <xpath expr="//page[@name='general_information']" position="after">
+            <page string="Détails Réservoir" name="reservoirs" invisible="not is_gpl_reservoir">
+                <group name="reservoir">
+                    <group name="reservoir_details" string="Fiche Réservoir">
+                        <field name="capacity"/>
+                        <field name="shape"/>
+                        <field name="fabricant_id" />
+                    </group>
+                </group>
+            </page>
+        </xpath>
+
+    </field>
+</record>
+
+</odoo>

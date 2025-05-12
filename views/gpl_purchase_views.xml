@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <menuitem name="Achats" parent="gpl_menu_root" id="gpl_purchase_menu_root" sequence="4" />
+
+
+
+    <menuitem name="Commandes" parent="gpl_purchase_menu_root" id="menu_gpl_purchase_order" sequence="20" />
+
+    <menuitem id="menu_gpl_purchase_general_vue_resume"
+      name="Demandes de prix"
+      parent="menu_gpl_purchase_order"
+      action="purchase.purchase_rfq" sequence="1" />
+
+    <menuitem id="menu_gpl_purchase_request_price"
+          name="Bons de commande"
+          parent="menu_gpl_purchase_order"
+          action="purchase.purchase_form_action" sequence="2" />
+
+    <menuitem name="Factures" parent="gpl_purchase_menu_root" id="menu_gpl_purchase_bills" sequence="30" />
+    <menuitem id="menu_gpl_purchase_bills_list"
+          name="Factures d'achat"
+          parent="menu_gpl_purchase_bills"
+          action="account.action_move_in_invoice_type" sequence="1" />
+
+    <menuitem id="menu_gpl_purchase_move_in_refund_type"
+      name="Remboursements"
+      parent="menu_gpl_purchase_bills"
+      action="account.action_move_in_refund_type" sequence="2" />
+
+    <menuitem id="menu_gpl_account_payments_payable"
+      name="Paiements Fournisseurs"
+      parent="menu_gpl_purchase_bills"
+      action="account.action_account_payments_payable" sequence="3" />
+
+    <menuitem id="menu_gpl_account_res_partner_action_supplier"
+      name="Fournisseurs"
+      parent="menu_gpl_purchase_bills"
+      action="account.res_partner_action_supplier" sequence="4" />
+</odoo>
