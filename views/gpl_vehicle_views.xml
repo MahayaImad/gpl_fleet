@@ -14,10 +14,28 @@
                             type="object"
                             class="oe_highlight"
                             invisible="next_service_type != 'installation' or appointment_date == False"/>
+                    <button name="action_create_repair_order"
+                            string="Créer réparation"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="next_service_type != 'repair' or appointment_date == False"/>
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
                     <field name="image_128" widget='image' class="oe_avatar"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_installations"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-cogs"
+                                help="Voir les installations GPL associées à ce véhicule"
+                                invisible = "installation_count == 0">
+                             <div class="o_stat_info">
+                                <field name="installation_count" class="o_stat_value"/>
+                                <span class="o_stat_text">Installations</span>
+                            </div>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <label for="license_plate"/>
                         <h2>
@@ -69,9 +87,7 @@
                 <field name="message_follower_ids" widget="mail_followers"/>
                 <field name="message_ids" widget="mail_thread"/>
             </div>
-                 <footer>
-                <button name="%(gpl_service_installation_action)d" type="action" string="Installation GPL" class="oe_stat_button" icon="fa-cogs"/>
-            </footer>
+
             </form>
         </field>
     </record>
@@ -189,8 +205,8 @@
                                     <field name="image_128" widget='image' height="40" widht ="40"/>
                                 </div>
                                 <div class="align-items-right ms-3">
-                                    <strong><i class="fa fa-car me-2"/> <field name="license_plate"/></strong><br/>
-                                    <small t-if="record.client_id.raw_value"><i class="fa fa-user me-2" title="utilisateur"/> <span t-esc="record.client_id.value"/></small>
+                                    <strong><i class="fa fa-car me-2"> </i> <field name="license_plate"/></strong><br/>
+                                    <small t-if="record.client_id.raw_value"><i class="fa fa-user me-2" title=" "/> <span t-esc="record.client_id.value"/></small>
                                 </div>
                             </div>
 

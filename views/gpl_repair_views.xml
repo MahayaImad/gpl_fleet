@@ -1,473 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Vue formulaire pour gpl.service.repair -->
-    <record id="view_form_gpl_service_repair" model="ir.ui.view">
-        <field name="name">gpl.service.repair.form</field>
-        <field name="model">gpl.service.repair</field>
+    <record id="view_repair_order_form_gpl_inherit" model="ir.ui.view">
+        <field name="name">repair.order.form.gpl.inherit</field>
+        <field name="model">repair.order</field>
+        <field name="inherit_id" ref="repair.view_repair_order_form"/>
         <field name="arch" type="xml">
-            <form string="Réparation GPL">
-                <header>
-                    <!-- Boutons d'action selon les étapes du flux -->
-                    <button name="action_confirm"
-                            string="Confirmer"
-                            type="object"
-                            class="oe_highlight"
-                            invisible="state != 'draft'"/>
+            <!-- Ajout des champs spécifiques GPL dans l'en-tête -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="gpl_vehicle_id" options="{'no_create': True}"/>
+                <field name="reservoir_lot_id" readonly="1"
+                       invisible="gpl_vehicle_id == False"/>
+            </xpath>
 
-                    <button name="action_plan"
-                            string="Planifier"
-                            type="object"
-                            class="oe_highlight"
-                            invisible="state != 'confirmed'"/>
-
-                    <button name="action_start_repair"
-                            string="Démarrer réparation"
-                            type="object"
-                            class="oe_highlight"
-                            invisible="state != 'planned'"/>
-
-                    <button name="action_create_picking"
-                            string="Réserver produits"
-                            type="object"
-                            class="oe_highlight"
-                            invisible="state != 'in_progress'"/>
-
-                    <button name="action_validate_engineer"
-                            string="Valider réparation"
-                            type="object"
-                            class="oe_highlight"
-                            invisible="state != 'to_validate'"/>
-
-                    <button name="action_invoice"
-                            string="Créer facture"
-                            type="object"
-                            class="oe_highlight"
-                            invisible="state != 'done' or invoice_id"/>
-
-                    <button name="action_cancel"
-                            string="Annuler"
-                            type="object"
-                            invisible="state == 'cancel'"/>
-
-                    <button name="action_draft"
-                            string="Remettre en brouillon"
-                            type="object"
-                            invisible="state == 'draft'"/>
-
-                    <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirmed,planned,in_progress,to_validate,done"/>
-
-                </header>
-
-                <sheet>
-                    <div class="oe_button_box" name="button_box">
-                        <button name="action_view_repair_lines"
-                                type="object"
-                                class="oe_stat_button"
-                                icon="fa-cubes">
-                            <div class="o_stat_info">
-                                <field name="products_count" class="o_stat_value"/>
-                                <span class="o_stat_text">Produits</span>
-                            </div>
-                        </button>
-                        <button name="action_view_picking"
-                                type="object"
-                                class="oe_stat_button"
-                                icon="fa-truck"
-                                invisible="picking_id == False">
-                            <span class="o_stat_text">Bon de livraison</span>
-                        </button>
-                        <button name="action_view_invoice"
-                                type="object"
-                                class="oe_stat_button"
-                                icon="fa-file-text-o"
-                                invisible="invoice_id == False">
-                            <span class="o_stat_text">Facture</span>
-                        </button>
-                    </div>
-
-                    <div class="oe_title">
-                        <h1>
-                            <field name="name"/>
-                        </h1>
-                    </div>
-
-                    <group>
-                        <group string="Détails de la réparation">
-                            <field name="date_request" required="1"/>
-                            <field name="date_planned" readonly="1" invisible="date_planned == False"/>
-                            <field name="date_start" readonly="1" invisible="date_start == False"/>
-                            <field name="date_completion" readonly="1" invisible="date_completion == False"/>
-                            <field name="vehicle_id" required="1" options="{'no_create': True, 'no_open': False}"/>
-                            <field name="client" readonly="1"/>
-                            <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="currency_id" invisible="1"/>
-                        </group>
-                        <group string="Intervenant et validation">
-                            <field name="technician_id" required="1" options="{'no_create': True}"/>
-                            <field name="engineer_validation_date" readonly="1" invisible="engineer_validation_date == False"/>
-                            <field name="picking_id" readonly="1" invisible="picking_id == False"/>
-                            <field name="invoice_id" readonly="1" invisible="invoice_id == False"/>
-                            <field name="total_amount" widget="monetary"
-                                   invisible="repair_line_ids == False"
-                                   options="{'currency_field': 'currency_id'}"/>
-                        </group>
-                    </group>
-
-                    <notebook>
-                        <page string="Produits et services">
-                            <button name="action_add_products"
-                                    string="Ajouter produits/services"
-                                    type="object"
-                                    class="btn-primary"
-                                    invisible ="[('state', 'in', ['done', 'cancel'])]"/>
-
-                            <field name="repair_line_ids">
-                                <tree editable="bottom">
-                                    <field name="product_id" options="{'no_create': True}" required="1"/>
-                                    <field name="is_service" invisible="1"/>
-                                    <field name="available_lot_ids" invisible="1"/>
-                                    <field name="lot_id"
-                                           domain="[('id', 'in', available_lot_ids)]"
-                                           options="{'no_create': True}"
-                                           invisible=" is_service == True or product_id == False"
-                                           required = "is_gpl_reservoir"/>
-                                    <field name="product_uom_qty"/>
-                                    <field name="serial_number" invisible="1"/>
-                                    <field name="is_gpl_reservoir" invisible="1"/>
-                                    <field name="qty_available" widget="badge"
-                                           decoration-danger="qty_available &lt; product_uom_qty"
-                                           decoration-success="qty_available &gt;= product_uom_qty"
-                                           invisible="is_service == True"/>
-                                    <field name="price_unit"/>
-                                    <field name="price_subtotal" sum="Total"/>
-                                </tree>
-                            </field>
-                        </page>
-                        <page string="Informations Réservoir">
-                            <group>
-                                <group string="Réservoir GPL Actuel">
-                                    <field name="reservoir_lot_id" options="{'no_create': True}"/>
-                                    <field name="serial_number" readonly="1" invisible="reservoir_lot_id == False"/>
-                                    <field name="certification_number" readonly="1" invisible="reservoir_lot_id == False"/>
-                                    <field name="certification_date" readonly="1" invisible="reservoir_lot_id == False"/>
-                                    <field name="expiry_date" readonly="1" invisible="reservoir_lot_id == False"/>
-                                </group>
-                                <group string="État" invisible="reservoir_lot_id == False">
-                                    <field name="reservoir_state" widget="badge"
-                                           decoration-success="reservoir_state == 'valid'"
-                                           decoration-warning="reservoir_state == 'expiring_soon'"
-                                           decoration-danger="reservoir_state == 'expired'"/>
-                                </group>
-                            </group>
-
-                            <group>
-                                <field name="replace_reservoir"/>
-                            </group>
-
-                            <group invisible="replace_reservoir == False">
-                                <group string="Nouveau Réservoir GPL">
-                                    <field name="new_reservoir_lot_id" options="{'no_create': True}"
-                                           required="[('replace_reservoir', '=', True)]"/>
-                                </group>
-                            </group>
-
-                            <div class="alert alert-info" role="status" invisible="reservoir_lot_id">
-                                <strong>Note:</strong> Sélectionnez un réservoir existant ou spécifiez les informations du réservoir.
-                            </div>
-                        </page>
-
-                        <page string="Diagnostic">
-                            <field name="diagnostic" placeholder="Saisissez le diagnostic du problème du réservoir GPL..."/>
-                        </page>
-
-
-
-                        <page string="Notes de réparation">
-                            <field name="repair_notes"
-                                   placeholder="Notes détaillées sur la réparation effectuée..."/>
-                        </page>
-
-                        <page string="Notes internes">
-                            <field name="internal_notes"
-                                   placeholder="Notes internes (non visibles par le client)..."/>
-                        </page>
-                    </notebook>
-
-                    <div class="alert alert-info" role="status" invisible="state != 'draft'">
-                        <strong>Étape 1 :</strong>
-                        Complétez le diagnostic et confirmez la réparation.
-                    </div>
-                    <div class="alert alert-info" role="status" invisible="state != 'confirmed'">
-                        <strong>Étape 2 :</strong>
-                        Assignez un technicien et planifiez la réparation.
-                    </div>
-                    <div class="alert alert-primary" role="status" invisible="state != 'planned'">
-                        <strong>Étape 3 :</strong>
-                        Démarrez la réparation lorsque le technicien est prêt.
-                    </div>
-                    <div class="alert alert-warning" role="status" invisible="state != 'in_progress'">
-                        <strong>Étape 4 :</strong>
-                        Ajoutez les produits nécessaires et réservez-les pour la réparation.
-                    </div>
-                    <div class="alert alert-info" role="status" invisible="state != 'to_validate'">
-                        <strong>Étape 5 :</strong>
-                        La réparation doit être validée par un ingénieur.
-                    </div>
-                    <div class="alert alert-success" role="status" invisible="state != 'done'">
-                        <strong>Réparation terminée !</strong>
-                        Vous pouvez maintenant créer la facture client.
-                    </div>
-                    <div class="alert alert-danger" role="status" invisible="state != 'cancel'">
-                        <strong>Réparation annulée.</strong>
-                        Vous pouvez la remettre en brouillon si nécessaire.
-                    </div>
-                </sheet>
-
-                <!-- Chatter (historique des modifications) -->
-                <chatter />
-            </form>
+            <!-- Ajout d'un nouvel onglet pour le diagnostic GPL -->
+            <notebook position="inside">
+                <page string="Diagnostic GPL" invisible="gpl_vehicle_id == False">
+                    <field name="diagnostic" placeholder="Entrez le diagnostic détaillé du problème GPL..."/>
+                </page>
+            </notebook>
         </field>
     </record>
 
-    <!-- Vue arbre (liste) pour gpl.service.repair -->
-    <record id="view_gpl_service_repair_tree" model="ir.ui.view">
-        <field name="name">gpl.service.repair.tree</field>
-        <field name="model">gpl.service.repair</field>
+
+    <record id="view_repair_order_tree_gpl_inherit" model="ir.ui.view">
+        <field name="name">repair.order.tree.gpl.inherit</field>
+        <field name="model">repair.order</field>
+        <field name="inherit_id" ref="repair.view_repair_order_tree"/>
         <field name="arch" type="xml">
-            <tree string="Réparations GPL">
-                <field name="state" decoration-info="state in ('draft', 'confirmed')"
-                       decoration-primary="state == 'planned'"
-                       decoration-warning="state in ('in_progress', 'to_validate')"
-                       decoration-success="state == 'done'"
-                       decoration-danger="state == 'cancel'"/>
-                <field name="name"/>
-                <field name="client"/>
-                <field name="vehicle_id"/>
-                <field name="date_request"/>
-                <field name="technician_id"/>
-                <field name="reservoir_lot_id"/>
-                <field name="replace_reservoir"/>
-                <field name="currency_id" invisible="1"/>
-                <field name="total_amount" sum="Total" widget="monetary"/>
-            </tree>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="gpl_vehicle_id" optional="show"/>
+            </xpath>
         </field>
     </record>
 
-    <!-- Vue de recherche pour gpl.service.repair -->
-    <record id="view_gpl_service_repair_search" model="ir.ui.view">
-        <field name="name">gpl.service.repair.search</field>
-        <field name="model">gpl.service.repair</field>
-        <field name="arch" type="xml">
-            <search string="Recherche de réparations GPL">
-                <field name="name"/>
-                <field name="client"/>
-                <field name="vehicle_id"/>
-                <field name="technician_id"/>
-                <field name="reservoir_lot_id"/>
-                <separator/>
-                <filter string="Brouillon" name="draft" domain="[('state', '=', 'draft')]"/>
-                <filter string="Confirmé" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
-                <filter string="Planifié" name="planned" domain="[('state', '=', 'planned')]"/>
-                <filter string="En cours" name="in_progress" domain="[('state', '=', 'in_progress')]"/>
-                <filter string="À valider" name="to_validate" domain="[('state', '=', 'to_validate')]"/>
-                <filter string="Terminé" name="done" domain="[('state', '=', 'done')]"/>
-                <filter string="Annulé" name="cancel" domain="[('state', '=', 'cancel')]"/>
-                <separator/>
-                <filter string="Remplacement de réservoir" name="replace_reservoir" domain="[('replace_reservoir', '=', True)]"/>
-                <separator/>
-                <filter string="Ce mois" name="this_month" domain="[
-                    ('date_request', '&gt;=', (context_today().replace(day=1)).strftime('%Y-%m-%d')),
-                    ('date_request', '&lt;=', (context_today().replace(day=1, month=context_today().month+1, day=1) + datetime.timedelta(days=-1)).strftime('%Y-%m-%d'))
-                ]"/>
-                <filter string="Ce jour" name="today"
-                        domain="[('date_request', '=', context_today().strftime('%Y-%m-%d'))]"/>
-                <group expand="1" string="Regrouper par">
-                    <filter string="Client" name="client" context="{'group_by': 'client'}"/>
-                    <filter string="Véhicule" name="vehicle" context="{'group_by': 'vehicle_id'}"/>
-                    <filter string="Technicien" name="technician" context="{'group_by': 'technician_id'}"/>
-                    <filter string="État" name="state" context="{'group_by': 'state'}"/>
-                    <filter string="Date de demande" name="date_request" context="{'group_by': 'date_request'}"/>
-                </group>
-            </search>
+    <!-- Vue recherche héritée pour repair.order -->
+    <record id="view_repair_order_search_gpl_inherit" model="ir.ui.view">
+    <field name="name">repair.order.search.gpl.inherit</field>
+    <field name="model">repair.order</field>
+    <field name="inherit_id" ref="repair.view_repair_order_form_filter"/>
+    <field name="arch" type="xml">
+        <!-- Ajouter le champ de recherche après partner_id -->
+        <field name="partner_id" position="after">
+            <field name="gpl_vehicle_id"/>
         </field>
-    </record>
 
-    <!-- Vue calendrier pour gpl.service.repair -->
-    <record id="view_gpl_service_repair_calendar" model="ir.ui.view">
-        <field name="name">gpl.service.repair.calendar</field>
-        <field name="model">gpl.service.repair</field>
-        <field name="arch" type="xml">
-            <calendar string="Réparations GPL" date_start="date_request" color="state" mode="month">
-                <field name="name"/>
-                <field name="client"/>
-                <field name="vehicle_id"/>
-                <field name="technician_id"/>
-            </calendar>
-        </field>
-    </record>
+        <!-- Ajouter le filtre de regroupement dans le groupe existant -->
+        <filter name="product" position="after">
+            <filter string="Véhicule GPL" name="group_vehicle" domain="[]" context="{'group_by': 'gpl_vehicle_id'}"/>
+        </filter>
+    </field>
+</record>
 
-    <!-- Vue kanban pour gpl.service.repair -->
-    <record id="view_gpl_service_repair_kanban" model="ir.ui.view">
-        <field name="name">gpl.service.repair.kanban</field>
-        <field name="model">gpl.service.repair</field>
-        <field name="arch" type="xml">
-            <kanban default_group_by="state" records_draggable="0" class="o_kanban_small_column" sample="1">
-                <field name="name"/>
-                <field name="client"/>
-                <field name="vehicle_id"/>
-                <field name="technician_id"/>
-                <field name="date_request"/>
-                <field name="state"/>
-                <field name="total_amount"/>
-                <field name="products_count"/>
-                <field name="currency_id"/>
-                <field name="replace_reservoir"/>
-                <templates>
-                    <t t-name="kanban-box">
-                        <div t-attf-class="oe_kanban_card oe_kanban_global_click">
-                            <div class="o_kanban_record_top">
-                                <div class="o_kanban_record_headings">
-                                    <strong class="o_kanban_record_title">
-                                        <span>
-                                            <t t-esc="record.name.value"/>
-                                        </span>
-                                    </strong>
-                                    <small class="o_kanban_record_subtitle">
-                                        <t t-esc="record.vehicle_id.value"/>
-                                    </small>
-                                </div>
-                            </div>
-                            <div class="o_kanban_record_body">
-                                <div>
-                                    <strong>Client:</strong>
-                                    <t t-esc="record.client.value"/>
-                                </div>
-                                <div>
-                                    <strong>Date:</strong>
-                                    <t t-esc="record.date_request.value"/>
-                                </div>
-                                <div>
-                                    <strong>Technicien:</strong>
-                                    <t t-esc="record.technician_id.value"/>
-                                </div>
-                                <div t-if="record.replace_reservoir.raw_value">
-                                    <span class="badge badge-warning">Remplacement réservoir</span>
-                                </div>
-                                <div t-if="record.products_count.raw_value > 0" class="mt8">
-                                    <span class="o_value">
-                                        <t t-esc="record.products_count.value"/>
-                                    </span>
-                                    <span class="o_label">produits</span>
-                                </div>
-                            </div>
-                            <div class="o_kanban_record_bottom">
-                                <div class="oe_kanban_bottom_left">
-                                    <span t-if="record.total_amount.raw_value" class="badge badge-pill">
-                                        <t t-esc="record.total_amount.value"/>
-                                    </span>
-                                </div>
-                                <div class="oe_kanban_bottom_right">
-                                    <field name="state" widget="label_selection" options="{'classes': {
-                                        'draft': 'bg-info',
-                                        'confirmed': 'bg-info',
-                                        'planned': 'bg-primary',
-                                        'in_progress': 'bg-warning',
-                                        'to_validate': 'bg-warning',
-                                        'done': 'bg-success',
-                                        'cancel': 'bg-danger'}}"/>
-                                </div>
-                            </div>
-                        </div>
-                    </t>
-                </templates>
-            </kanban>
-        </field>
-    </record>
-
-    <!-- Vue pivot pour gpl.service.repair -->
-    <record id="view_gpl_service_repair_pivot" model="ir.ui.view">
-        <field name="name">gpl.service.repair.pivot</field>
-        <field name="model">gpl.service.repair</field>
-        <field name="arch" type="xml">
-            <pivot string="Analyse des réparations GPL" sample="1">
-                <field name="date_request" type="row" interval="month"/>
-                <field name="technician_id" type="col"/>
-                <field name="total_amount" type="measure"/>
-                <field name="products_count" type="measure"/>
-            </pivot>
-        </field>
-    </record>
-
-    <!-- Vue arbre spécifique pour les lignes de réparation -->
-    <record id="view_gpl_repair_line_tree" model="ir.ui.view">
-        <field name="name">gpl.repair.line.tree</field>
-        <field name="model">gpl.repair.line</field>
-        <field name="arch" type="xml">
-            <tree string="Produits et services utilisés" editable="bottom">
-                <field name="product_id" options="{'no_create': True}" required="1"/>
-                <field name="is_service" invisible="1"/>
-                <field name="lot_id" domain="[('id', 'in', available_lot_ids)]" options="{'no_create': True}"
-                       invisible="is_service == True or product_id == False"
-                       required ="is_gpl_reservoir"/>
-                <field name="product_uom_qty"/>
-                <field name="serial_number" readonly="1"/>
-                <field name="is_gpl_reservoir" invisible="1"/>
-                <field name="qty_available" widget="badge"
-                       decoration-danger="qty_available &lt; product_uom_qty"
-                       decoration-success="qty_available &gt;= product_uom_qty"
-                       invisible="is_service == True"/>
-                <field name="price_unit"/>
-                <field name="price_subtotal" sum="Total"/>
-                <field name="available_lot_ids" invisible="1"/>
-            </tree>
-        </field>
-    </record>
-
-    <!-- Assistant d'ajout de produits -->
-    <record id="view_gpl_repair_add_products_form" model="ir.ui.view">
-        <field name="name">gpl.repair.add.products.form</field>
-        <field name="model">gpl.repair.add.products</field>
-        <field name="arch" type="xml">
-            <form string="Ajouter des produits">
-                <sheet>
-                    <group>
-                        <field name="repair_id" invisible="1"/>
-                        <field name="include_services"/>
-                        <field name="product_ids" domain="['|', ('type', 'in', ['product', 'consu']), ('type', '=', 'service')]">
-                            <tree>
-                                <field name="default_code"/>
-                                <field name="name"/>
-                                <field name="type"/>
-                                <field name="list_price"/>
-                            </tree>
-                        </field>
-                    </group>
-                </sheet>
-                <footer>
-                    <button name="action_add_products" string="Ajouter" type="object" class="btn-primary"/>
-                    <button string="Annuler" class="btn-secondary" special="cancel"/>
-                </footer>
-            </form>
-        </field>
-    </record>
-
-    <!-- Actions et menus -->
-    <record id="action_gpl_service_repair" model="ir.actions.act_window">
+    <!-- Action de menu pour les réparations GPL -->
+    <record id="action_repair_order_gpl" model="ir.actions.act_window">
         <field name="name">Réparations GPL</field>
-        <field name="res_model">gpl.service.repair</field>
-        <field name="view_mode">kanban,tree,form,calendar,pivot</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">repair.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('gpl_vehicle_id', '!=', False)]</field>
+        <field name="context">{'default_gpl_repair': True}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Créer une nouvelle réparation GPL
+                Créer votre première réparation GPL
             </p>
             <p>
-                Gérez vos réparations de réservoirs GPL, suivez le diagnostic, la réparation, et la validation par un ingénieur.
+                Les réparations GPL vous permettent de gérer les interventions sur les installations GPL de vos véhicules.
             </p>
         </field>
     </record>
 
-    <!-- Menu pour les réparations -->
-    <menuitem id="menu_gpl_service_repair" name="Réparations" action="action_gpl_service_repair"
-              parent="menu_gpl_operations" sequence="20"/>
+    <!-- Menu pour accéder aux réparations GPL -->
+    <menuitem id="menu_repair_order_gpl"
+              name="Réparations GPL"
+              parent="gpl_fleet.menu_gpl_operations"
+              action="action_repair_order_gpl"
+              sequence="20"/>
 </odoo>

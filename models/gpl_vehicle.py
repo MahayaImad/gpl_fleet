@@ -1,4 +1,9 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+import logging
+
+from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 class GplVehicle(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin', 'avatar.mixin']
@@ -124,10 +129,11 @@ class GplVehicle(models.Model):
         readonly=False
     )
 
-    repair_id = fields.Many2one(
-        'gpl.service.repair',
-        'Repair GPL',
-        readonly=False
+    repair_order_id = fields.Many2one(
+        'repair.order',
+        string='Réparation en cours',
+        readonly=True,
+        help="Réparation actuelle pour ce véhicule"
     )
 
     reservoir_lot_id = fields.Many2one('stock.lot', string="Réservoir installé",
@@ -141,15 +147,32 @@ class GplVehicle(models.Model):
     reservoir_expiry_date = fields.Date(related="reservoir_lot_id.expiry_date",
                                        string="Date d'expiration", readonly=True)
 
-    def action_open_installation(self):
+    installation_count = fields.Integer(
+        compute="_compute_count_all",
+        string='Installations'
+    )
+
+    @api.depends('installation_id')
+    def _compute_count_all(self):
+        for record in self:
+            # Calcul du nombre d'installations liées au véhicule
+            record.installation_count = self.env['gpl.service.installation'].search_count([
+                ('vehicle_id', '=', record.id)
+            ])
+            # Calcul du compteur kilométrique (code existant)
+            record.odometer_count = self.env['gpl.vehicle.odometer'].search_count([
+                ('vehicle_id', '=', record.id)
+            ])
+
+    def action_view_installations(self):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
+            'name': 'Installations GPL',
             'res_model': 'gpl.service.installation',
-            'res_id': self.installation_id.id,
-            'view_mode': 'form',
-            'view_type': 'form',
-            'target': 'current',
+            'view_mode': 'tree,form',
+            'domain': [('vehicle_id', '=', self.id)],
+            'context': {'default_vehicle_id': self.id}
         }
 
     @api.depends('model_id.brand_id.name', 'model_id.name', 'license_plate')
@@ -174,7 +197,6 @@ class GplVehicle(models.Model):
                 data = {'value': record.odometer, 'date': date, 'vehicle_id': record.id}
                 self.env['gpl.vehicle.odometer'].create(data)
 
-
     @api.model
     def _read_group_status_ids(self, statuses, domain, order):
         return self.env['gpl.vehicle.status'].search([], order=order)
@@ -190,13 +212,29 @@ class GplVehicle(models.Model):
             if planned_status:
                 self.status_id = planned_status
 
-
     def action_create_installation(self):
         """
-        Crée une nouvelle installation GPL pour le véhicule
+        Ouvre une installation GPL existante non terminée si elle existe,
+        sinon crée une nouvelle installation GPL pour le véhicule
         et met à jour le statut du véhicule.
         """
         self.ensure_one()
+
+        # Rechercher d'abord s'il existe une installation non terminée
+        existing_installation = self.env['gpl.service.installation'].search([
+            ('vehicle_id', '=', self.id),
+            ('state', 'in', ['draft', 'planned', 'in_progress'])  # États non terminés
+        ], limit=1)
+
+        if existing_installation:
+            # S'il y a une installation existante non terminée, l'ouvrir
+            return {
+                'name': _('Installation GPL existante'),
+                'view_mode': 'form',
+                'res_model': 'gpl.service.installation',
+                'res_id': existing_installation.id,
+                'type': 'ir.actions.act_window',
+            }
         # Récupération du statut "En service"
         in_progress_status = self.env.ref('gpl_fleet.vehicle_status_en_service', raise_if_not_found=False)
 
@@ -224,21 +262,54 @@ class GplVehicle(models.Model):
             'res_id': installation.id,
             'type': 'ir.actions.act_window',
         }
-    # @api.depends('reservoir_id')
-    # def _compute_reservoir_info(self):
-    #     for record in self:
-    #         if record.reservoir_id:
-    #             record.reservoir_serial = record.reservoir_id.name
-    #             record.reservoir_certification = record.reservoir_id.certification_number
-    #             record.reservoir_certification_date = record.reservoir_id.certification_date
-    #             record.reservoir_expiry_date = record.reservoir_id.expiry_date
-    #             record.reservoir_state = record.reservoir_id.state
-    #         else:
-    #             record.reservoir_serial = False
-    #             record.reservoir_certification = False
-    #             record.reservoir_certification_date = False
-    #             record.reservoir_expiry_date = False
-    #             record.reservoir_state = False
+
+    def action_create_repair_order(self):
+        """Crée un nouvel ordre de réparation pour le véhicule GPL."""
+        self.ensure_one()
+
+        # Créer l'ordre de réparation
+        RepairOrder = self.env['repair.order']
+
+        # Déterminer le produit à réparer (réservoir ou produit générique GPL)
+        product = self.reservoir_lot_id.product_id if self.reservoir_lot_id else False
+        if not product:
+            # Chercher un produit générique de type GPL
+            product = self.env['product.product'].search([
+                ('name', 'ilike', 'GPL'),
+                ('type', '=', 'product')
+            ], limit=1)
+
+            if not product:
+                raise UserError(_("Aucun produit trouvé pour créer la réparation. Veuillez configurer un produit GPL."))
+
+        # Préparation des valeurs
+        values = {
+            'gpl_vehicle_id': self.id,
+            'product_id': product.id,
+            'partner_id': self.client_id.id if self.client_id else False,
+            'product_uom': product.uom_id.id,
+        }
+
+        # Si un réservoir est installé, utiliser son lot
+        if self.reservoir_lot_id:
+            values['lot_id'] = self.reservoir_lot_id.id
+
+        repair_order = RepairOrder.create(values)
+
+        # Mettre à jour le véhicule
+        self.write({
+            'repair_order_id': repair_order.id,
+            'next_service_type': 'repair'
+        })
+
+        # Ouvrir le formulaire de réparation
+        return {
+            'name': _('Réparation GPL'),
+            'view_mode': 'form',
+            'res_model': 'repair.order',
+            'res_id': repair_order.id,
+            'type': 'ir.actions.act_window',
+        }
 class FleetVehicleModel(models.Model):
     _inherit = 'fleet.vehicle.model'
 

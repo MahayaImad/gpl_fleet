@@ -58,6 +58,15 @@
                                 <span class="o_stat_text">Produits</span>
                             </div>
                         </button>
+
+                            <button name="action_view_sale_order"
+                                    type="object"
+                                    class="oe_stat_button"
+                                    icon="fa-shopping-cart"
+                                    invisible="sale_order_id == False">
+                                <span class="o_stat_text">Bon de commande client</span>
+                            </button>
+
                         <button name="action_view_picking"
                                 type="object"
                                 class="oe_stat_button"
@@ -92,81 +101,40 @@
                         </group>
                         <group string="Intervenant et matériel">
                             <field name="technician_id" required="1" options="{'no_create': True}"/>
+                            <field name="sale_order_id" readonly="1" invisible="sale_order_id == False"/>
                             <field name="picking_id" readonly="1" invisible="picking_id == False"/>
                             <field name="invoice_id" readonly="1" invisible="invoice_id == False"/>
                             <field name="total_amount" widget="monetary"
-                                   invisible="installation_line_ids == False"
-                                   options="{'currency_field': 'currency_id'}"/>
+                                   invisible ="installation_line_ids == False"                                   options="{'currency_field': 'currency_id'}"/>
                         </group>
                     </group>
 
                     <notebook>
-                        <!-- <page string="Informations Réservoir" invisible="state == 'cancel'" >
-                            <group>
-                                <group string="Réservoir GPL">
-                                    <field name="reservoir_lot_id" options="{'no_create': True}"/>
+                       <!-- Remplacer la page des produits utilisés dans views/gpl_installation_views.xml -->
+                    <page string="Produits à commander">
 
-                                </group>
-                                <group string="État" >
-                                    <field name="reservoir_state" widget="badge"
-                                           decoration-success="reservoir_state == 'valid'"
-                                           decoration-warning="reservoir_state == 'expiring_soon'"
-                                           decoration-danger="reservoir_state == 'expired'"/>
-                                </group>
-                            </group>
-                            <div class="alert alert-info" role="status">
-                                <strong>Note:</strong> Sélectionnez un réservoir existant ou ajoutez un produit de type réservoir GPL avec un numéro de série dans la liste des produits ci-dessous.
-                            </div>
-                        </page>
-                      <page string="Informations Réservoir" invisible="state == 'cancel'">
-                            <group>
-                                <group string="Réservoir GPL">
-                                    <field name="reservoir_lot_id" options="{'no_create': True}"/>
-                                    <field name="serial_number"
-                                           required="[('reservoir_lot_id', '=', False)]"
-                                           invisible="[('reservoir_lot_id', '!=', False)]"/>
-                                    <field name="certification_number" invisible="reservoir_lot_id != False"/>
-                                    <field name="certification_date" invisible="reservoir_lot_id != False"/>
-                                    <field name="expiry_date" readonly="1" force_save="1" invisible="expiry_date == False"/>
-                                </group>
-                                <group string="État" invisible="reservoir_lot_id == False">
-                                    <field name="reservoir_state" widget="badge"
-                                   decoration-success="reservoir_state == 'valid'"
-                                   decoration-warning="reservoir_state == 'expiring_soon'"
-                                   decoration-danger="reservoir_state == 'expired'"/>
-                                </group>
-                            </group>
-                            <div class="alert alert-info" role="status" invisible="reservoir_lot_id">
-                                <strong>Note:</strong> Saisissez les informations du nouveau réservoir, ou sélectionnez un réservoir existant.
-                            </div>
-                        </page>-->
+                        <field name="installation_line_ids">
+        <tree editable="bottom">
+            <field name="product_id" options="{'no_create': True}" required="1"/>
+            <field name="product_uom_qty"/>
+            <field name="lot_id"
+                   domain="[('id', 'in', available_lot_ids)]"
+                   options="{'no_create': True}"
+                    column_invisible="1"/>
+            <field name="serial_number" column_invisible="1"/>
+            <field name="is_gpl_reservoir" invisible="1" column_invisible="1"/>
+            <field name="qty_available" widget="badge"
+                   decoration-danger="qty_available &lt; product_uom_qty"
+                   decoration-success="qty_available &gt;= product_uom_qty"/>
+            <field name="price_unit"/>
+            <field name="price_subtotal" sum="Total"/>
+            <field name="available_lot_ids" invisible="1" column_invisible="1"/>
+        </tree>
+    </field>
+                        <!-- Garder le champ original mais le rendre invisible -->
+                        <field name="installation_line_ids" invisible="1"/>
 
-                        <!-- Add to the products page in installation form view -->
-                        <page string="Produits utilisés">
-
-                            <field name="installation_line_ids">
-                                <tree editable="bottom">
-                                    <field name="product_id" options="{'no_create': True}" required="1"/>
-                                    <field name="available_lot_ids"/>
-                                    <field name="lot_id"
-                                       domain="[('id', 'in', available_lot_ids)]"
-                                       options="{'no_create': True}"
-                                       invisible="not product_id"
-                                       required="is_gpl_reservoir"/>
-                                    <field name="product_uom_qty"/>
-                                    <field name="serial_number" column_invisible="1"/>
-                                    <field name="is_gpl_reservoir" column_invisible="1"/>
-                                    <field name="qty_available" widget="badge"
-                                           decoration-danger="qty_available &lt; product_uom_qty"
-                                           decoration-success="qty_available &gt;= product_uom_qty"/>
-                                    <field name="forecast_availability" column_invisible="1"/>
-                                    <field name="price_unit"/>
-                                    <field name="price_subtotal" sum="Total"/>
-                                    <field name="status_color" column_invisible="1"/>
-                                    # TODO: Implémenter un boutton forcast stock similaire à stock._product_forecast_report
-                                </tree>
-                            </field>
-                        </page>
+                    </page>
                         <page string="Notes">
                             <field name="notes"
                                    placeholder="Informations complémentaires concernant cette installation..."/>
@@ -175,7 +143,8 @@
 
                     <div class="alert alert-info" role="status" invisible="state != 'draft'">
                         <strong>Étape 1 :</strong>
-                        Complétez les informations de base et ajoutez les produits nécessaires à l'installation.
+                        <strong>Comment utiliser:</strong> Ajoutez les produits nécessaires pour cette installation.
+                            Une fois la préparation validée, un bon de commande client sera automatiquement créé.
                     </div>
                     <div class="alert alert-primary" role="status" invisible="state != 'planned'">
                         <strong>Étape 2 :</strong>

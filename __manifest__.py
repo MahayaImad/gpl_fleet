@@ -26,8 +26,11 @@
             'stock',  # For stock.picking
             'mrp',  # For mrp.bom references
             'hr',  # For hr.employee (technician_id)
+            'purchase',
             'account',  # For account.move (invoice_id)
-            'mail',  # For mail.thread, mail.activity.mixin
+            'mail',# For mail.thread, mail.activity.mixin
+            'sale',
+            'repair',
         ],
     # always loaded
     'data': [
@@ -43,6 +46,7 @@
         'views/gpl_installation_views.xml',
         'views/gpl_repair_views.xml',
     ],
+    'icon': '/gpl_fleet/static/description/icon.png',
     'installable': True,
     'application': True,
     'license': 'LGPL-3',

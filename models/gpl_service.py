@@ -57,6 +57,8 @@ class GplService(models.Model):
                                  default=lambda self: self.env.company)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
 
+    sale_order_id = fields.Many2one('sale.order', string="Bon de commande client", copy=False)
+
     @api.depends('installation_line_ids')
     def _compute_products_count(self):
         for record in self:
@@ -94,6 +96,7 @@ class GplService(models.Model):
         # Conserver le code existant - définir le client à partir du véhicule
         if self.vehicle_id and self.vehicle_id.client_id:
             self.client = self.vehicle_id.client_id
+
     def action_validate_preparation(self):
         for record in self:
             if not record.vehicle_id:
@@ -103,11 +106,71 @@ class GplService(models.Model):
             if not record.date_service:
                 raise UserError(_("Veuillez définir une date de service avant de continuer."))
 
-            # On utilise maintenant l'onchange pour mettre à jour reservoir_id, pas ici
-            record.write({'state': 'planned', 'date_planned': fields.Date.today(), })
+            # Créer un bon de commande client si ce n'est pas déjà fait
+            if not record.sale_order_id and record.installation_line_ids:
+                self._create_sale_order()
+
+            # Mettre à jour le statut
+            record.write({'state': 'planned', 'date_planned': fields.Date.today()})
             msg = _("Préparation validée par %s") % self.env.user.name
             record.message_post(body=msg)
         return True
+
+    def _create_sale_order(self):
+        """Crée un bon de commande client basé sur les produits utilisés"""
+        self.ensure_one()
+
+        if not self.installation_line_ids:
+            return False
+
+        if not self.client:
+            raise UserError(_("Aucun client associé au véhicule. Veuillez définir un client."))
+
+        # Créer l'entête de la commande client
+        so_vals = {
+            'partner_id': self.client.id,
+            'date_order': fields.Datetime.now(),
+            'origin': self.name,
+            'company_id': self.company_id.id,
+            'order_line': [],
+        }
+
+        # Ajouter les lignes de commande
+        for line in self.installation_line_ids:
+            so_line = {
+                'product_id': line.product_id.id,
+                'name': line.product_id.name,
+                'product_uom_qty': line.product_uom_qty,
+                'product_uom': line.product_id.uom_id.id,
+                'price_unit': line.price_unit,
+            }
+            so_vals['order_line'].append((0, 0, so_line))
+
+        # Créer la commande client
+        sale_order = self.env['sale.order'].create(so_vals)
+
+        # Lier la commande client à l'installation
+        self.write({'sale_order_id': sale_order.id})
+
+        # Message de confirmation
+        msg = _("Bon de commande client %s créé pour cette installation.") % sale_order.name
+        self.message_post(body=msg)
+
+        return sale_order
+
+    def action_view_sale_order(self):
+        """Ouvre la commande client associée"""
+        self.ensure_one()
+        if not self.sale_order_id:
+            return
+
+        return {
+            'name': _('Bon de commande client'),
+            'view_mode': 'form',
+            'res_model': 'sale.order',
+            'res_id': self.sale_order_id.id,
+            'type': 'ir.actions.act_window',
+        }
 
     def action_create_picking(self):
         self.ensure_one()
@@ -696,3 +759,56 @@ class GplInstallationAddProducts(models.TransientModel):
         return res
 
 
+# Ajout dans models/gpl_service.py
+
+class GplInstallationProductLine(models.Model):
+    _name = 'gpl.installation.product.line'
+    _description = "Ligne de produit pour installation GPL"
+
+    installation_id = fields.Many2one('gpl.service.installation', string="Installation", required=True,
+                                      ondelete='cascade')
+    product_id = fields.Many2one('product.product', string="Produit", required=True,
+                                 domain="[('purchase_ok', '=', True)]")
+    product_uom_qty = fields.Float(string="Quantité", default=1.0)
+    price_unit = fields.Float(string="Prix unitaire", compute="_compute_price", store=True)
+    price_subtotal = fields.Float(string="Sous-total", compute="_compute_subtotal", store=True)
+
+    # Champs spécifiques pour les réservoirs GPL
+    is_gpl_reservoir = fields.Boolean(related="product_id.is_gpl_reservoir", string="Est un réservoir GPL", store=True)
+    lot_selection = fields.Selection([
+        ('existing', 'Utiliser un réservoir existant'),
+        ('new', 'Commander un nouveau réservoir')
+    ], string="Type de réservoir")
+    new_reservoir = fields.Boolean(string="Nouveau réservoir", default=False)
+    serial_number = fields.Char(string="Numéro de série")
+
+    @api.depends('product_id')
+    def _compute_price(self):
+        for line in self:
+            if line.product_id:
+                line.price_unit = line.product_id.list_price
+            else:
+                line.price_unit = 0.0
+
+    @api.depends('product_uom_qty', 'price_unit')
+    def _compute_subtotal(self):
+        for line in self:
+            line.price_subtotal = line.product_uom_qty * line.price_unit
+
+    @api.onchange('product_id')
+    def _onchange_product_id(self):
+        if self.product_id and self.product_id.is_gpl_reservoir:
+            # Si c'est un réservoir GPL, définir lot_selection par défaut
+            self.lot_selection = 'new'
+            self.new_reservoir = True
+        else:
+            self.lot_selection = False
+            self.new_reservoir = False
+            self.serial_number = False
+
+    @api.onchange('lot_selection')
+    def _onchange_lot_selection(self):
+        if self.lot_selection == 'new':
+            self.new_reservoir = True
+        else:
+            self.new_reservoir = False

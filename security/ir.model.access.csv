@@ -6,6 +6,4 @@ gpl_fleet.access_gpl_vehicle_odometer,access_gpl_vehicle_odometer,gpl_fleet.mode
 gpl_fleet.access_gpl_service_installation,access_gpl_service_installation,gpl_fleet.model_gpl_service_installation,base.group_user,1,1,1,1
 gpl_fleet.access_gpl_installation_line,access_gpl_installation_line,gpl_fleet.model_gpl_installation_line,base.group_user,1,1,1,1
 access_gpl_vehicle_status_user,gpl.vehicle.status.user,model_gpl_vehicle_status,base.group_user,1,1,1,1
-gpl_fleet.access_gpl_service_repair,access_gpl_service_repair,gpl_fleet.model_gpl_service_repair,base.group_user,1,1,1,1
-gpl_fleet.access_gpl_repair_line,access_gpl_repair_line,gpl_fleet.model_gpl_repair_line,base.group_user,1,1,1,1
-gpl_fleet.access_gpl_repair_add_products,access_gpl_repair_add_products,gpl_fleet.model_gpl_repair_add_products,base.group_user,1,1,1,1
+gpl_fleet.access_gpl_installation_product_line,access_gpl_installation_product_line,gpl_fleet.model_gpl_installation_product_line,base.group_user,1,1,1,1
