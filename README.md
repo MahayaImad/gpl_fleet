@@ -1,7 +1,7 @@
 # Module GPL Installation pour Odoo 17
 
 ## Description
-Le module **GPL Installation** est une solution complète pour la gestion des installations GPL sur véhicules dans Odoo 17. Il permet de suivre l'ensemble du cycle de vie d'une installation GPL, depuis l'enregistrement du véhicule jusqu'à la maintenance, en passant par l'installation et les réparations.
+Le module **GPL Installation** est une solution professionnelle complète pour la gestion des installations GPL sur véhicules dans Odoo 17. Il permet de suivre l'ensemble du cycle de vie d'une installation GPL, depuis l'enregistrement du véhicule jusqu'à la maintenance, en passant par l'installation et les réparations.
 
 ## Fonctionnalités principales
 
@@ -30,6 +30,19 @@ Le module **GPL Installation** est une solution complète pour la gestion des in
 - Alertes pour les contrôles périodiques
 - Historique complet des interventions par réservoir
 
+## Achat et téléchargement
+
+### Tarifs et options
+- **Licence Standard** : Contactez-nous pour un devis personnalisé
+- **Licence Entreprise** : Contactez-nous pour un devis personnalisé
+- **Licence Multi-site** : Contactez-nous pour un devis personnalisé
+
+Pour acquérir ce module, visitez notre site web ou contactez-nous par mail
+### Support inclus
+- 6 mois de mises à jour et corrections de bugs
+- 30 jours de support par email
+- Documentation complète
+
 ## Installation
 
 ### Prérequis
@@ -37,10 +50,12 @@ Le module **GPL Installation** est une solution complète pour la gestion des in
 - Modules dépendants : fleet, product, stock, mrp, hr, account, mail, repair
 
 ### Procédure d'installation
-1. Téléchargez le module et placez-le dans le dossier addons d'Odoo
-2. Mettez à jour la liste des applications dans Odoo
-3. Recherchez "GPL Installation" et cliquez sur "Installer"
-4. Configurez les paramètres de base après l'installation
+1. Téléchargez le module depuis votre espace client
+2. Placez-le dans le dossier addons d'Odoo
+3. Mettez à jour la liste des applications dans Odoo
+4. Recherchez "GPL Installation" et cliquez sur "Installer"
+5. Entrez votre clé de licence lorsqu'elle est demandée
+6. Configurez les paramètres de base après l'installation
 
 ## Configuration
 
@@ -77,16 +92,19 @@ Le module **GPL Installation** est une solution complète pour la gestion des in
 - Suivi des stocks de pièces et réservoirs
 - Analyses des coûts et revenus par type d'intervention
 
-## Personnalisation
-Le module est conçu pour être facilement extensible :
-- Ajout de champs personnalisés sur les véhicules et installations
-- Création de nouveaux statuts et étapes dans le flux
-- Personnalisation des rapports et documents
+## Personnalisation et services additionnels
+- Personnalisation spécifique à votre entreprise
+- Intégration avec d'autres modules
+- Formation et assistance à la mise en place
+- Développement de fonctionnalités sur mesure
+
+Pour toute demande de personnalisation, contactez notre équipe de services professionnels.
 
 ## Support technique
 Pour toute question ou assistance technique :
-- Email : support@monentreprise.com
-- Documentation en ligne : https://www.monentreprise.com/documentation
+- Email : mahaya.imad@gmail.com
 
 ## Licence
-Ce module est distribué sous licence LGPL-3.
+Ce module est distribué sous une licence commerciale propriétaire. L'achat d'une licence vous donne le droit d'utiliser le module selon les termes spécifiés dans votre contrat de licence. La redistribution, la modification ou la revente non autorisée de ce module est strictement interdite.
+
+© 2025 SPSS. Tous droits réservés.
