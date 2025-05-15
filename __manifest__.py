@@ -45,6 +45,7 @@
         'views/gpl_reservoir_views.xml',
         'views/gpl_installation_views.xml',
         'views/gpl_repair_views.xml',
+        'views/res_config_settings_views.xml',
     ],
     'icon': '/gpl_fleet/static/description/icon.png',
     'installable': True,

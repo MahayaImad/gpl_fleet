@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="res_config_settings_view_form" model="ir.ui.view">
+            <field name="name">res.config.settings.view.form.inherit.hr.fleet</field>
+            <field name="model">res.config.settings</field>
+            <field name="priority" eval="90"/>
+            <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                 <xpath expr="//form" position="inside">
+                    <app data-string="GPL Installation" id="gpl_fleet" string="GPL Installation" name="gpl_fleet">
+                        <block title="Paramètres d'Installation GPL" id="end_contract_setting">
+                            <setting id="gpl_simplified_flow" title="Flux d'installation Simplifié" string="Flux d'installation Simplifié" help="Utiliser un flux d'installation simplifié (préparation → bon de livraison → terminé)">
+                                <field name="gpl_simplified_flow" />
+                            </setting>
+
+                            <setting invisible="gpl_simplified_flow == False"
+                                     id ="gpl_auto_invoice"
+                                     title ="Facturation automatique"
+                                     string="Facturation automatique"
+                                    help="Créer automatiquement la facture lors de la validation d'une installation">
+
+                                    <field name="gpl_auto_invoice"/>
+                            </setting>
+                        </block>
+                    </app>
+                </xpath>
+
+            </field>
+        </record>
+
+
+        <record id="action_gpl_configuration" model="ir.actions.act_window">
+            <field name="name">Configuration GPL</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">res.config.settings</field>
+            <field name="view_mode">form</field>
+            <field name="target">inline</field>
+            <field name="context">{'module' : 'gpl_fleet'}</field>
+        </record>
+
+        <menuitem id="fleet_config_settings_menu" name="Settings"
+            parent="gpl_fleet.gpl_fleet_configuration" sequence="0" action="action_gpl_configuration"
+            groups="base.group_system"/>
+    </data>
+</odoo>

@@ -202,7 +202,8 @@
                              <!-- Vehicle Brand Icon and Info -->
                             <div class="d-flex align-items-right mb-2">
                                 <div t-if="record.image_128.raw_value" class="me-2">
-                                    <field name="image_128" widget='image' height="40" widht ="40"/>
+                                    <img t-att-src="kanban_image('gpl.vehicle', 'image_128', record.id.raw_value)"
+     alt="Vehicle Image" class="oe_kanban_image" t-att-style="'width: 40px; height: 40px;'"/>
                                 </div>
                                 <div class="align-items-right ms-3">
                                     <strong><i class="fa fa-car me-2"> </i> <field name="license_plate"/></strong><br/>
@@ -218,7 +219,7 @@
     <!-- Dynamically set badge color based on next_service_type's value -->
                                     <span t-attf-class="badge rounded-pill  text-white #{
                                         record.next_service_type.raw_value and record.next_service_type.value == 'Installation GPL' ? 'bg-success' :
-                                        record.next_service_type.raw_value and record.next_service_type.value == 'Réparation' ? 'bg-success' :
+                                        record.next_service_type.raw_value and record.next_service_type.value == 'Réparation' ? 'bg-danger' :
                                         record.next_service_type.raw_value and record.next_service_type.value == 'Maintenance' ? 'bg-warning' :
                                         record.next_service_type.raw_value and record.next_service_type.value == 'Inspection' ? 'bg-info' : 'bg-secondary'
                                     }" t-esc="record.next_service_type.value"/>

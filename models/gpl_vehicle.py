@@ -264,43 +264,63 @@ class GplVehicle(models.Model):
         }
 
     def action_create_repair_order(self):
-        """Crée un nouvel ordre de réparation pour le véhicule GPL."""
+        """
+        Crée un nouvel ordre de réparation pour le véhicule GPL
+        en utilisant uniquement un produit de service générique.
+        """
         self.ensure_one()
 
-        # Créer l'ordre de réparation
-        RepairOrder = self.env['repair.order']
+        # Vérifier si le client est défini
+        if not self.client_id:
+            raise UserError(_("Veuillez définir un client pour ce véhicule avant de créer une réparation."))
 
-        # Déterminer le produit à réparer (réservoir ou produit générique GPL)
-        product = self.reservoir_lot_id.product_id if self.reservoir_lot_id else False
-        if not product:
-            # Chercher un produit générique de type GPL
-            product = self.env['product.product'].search([
-                ('name', 'ilike', 'GPL'),
-                ('type', '=', 'product')
-            ], limit=1)
+        # Chercher ou créer un produit de service générique pour GPL
+        ProductProduct = self.env['product.product']
+        service_product = ProductProduct.search([
+            ('name', '=', 'Service Réparation GPL'),
+            ('type', '=', 'service')
+        ], limit=1)
 
-            if not product:
-                raise UserError(_("Aucun produit trouvé pour créer la réparation. Veuillez configurer un produit GPL."))
+        if not service_product:
+            # Créer le produit de service s'il n'existe pas
+            service_product = ProductProduct.create({
+                'name': 'Service Réparation GPL',
+                'type': 'service',
+                'categ_id': self.env.ref('product.product_category_all').id,
+                'uom_id': self.env.ref('uom.product_uom_unit').id,
+                'uom_po_id': self.env.ref('uom.product_uom_unit').id,
+                'sale_ok': True,
+                'purchase_ok': False,
+                'invoice_policy': 'order',
+                'tracking': 'none',  # Pas de suivi par numéro de série pour les services
+            })
 
-        # Préparation des valeurs
+        # Préparation des valeurs pour repair.order
         values = {
             'gpl_vehicle_id': self.id,
-            'product_id': product.id,
-            'partner_id': self.client_id.id if self.client_id else False,
-            'product_uom': product.uom_id.id,
+            'product_id': service_product.id,
+            'product_qty': 1.0,
+            'partner_id': self.client_id.id,
+            'product_uom': service_product.uom_id.id,
+            'state': 'draft',
+            'invoice_method': 'after_repair',
+            'name': f"Réparation GPL - {self.name}",
+            'lot_id': False,  # Pas de numéro de lot pour un service
         }
 
-        # Si un réservoir est installé, utiliser son lot
-        if self.reservoir_lot_id:
-            values['lot_id'] = self.reservoir_lot_id.id
-
+        # Création de l'ordre de réparation
+        RepairOrder = self.env['repair.order']
         repair_order = RepairOrder.create(values)
 
-        # Mettre à jour le véhicule
-        self.write({
+        # Mise à jour du statut du véhicule
+        repair_status = self.env.ref('gpl_fleet.vehicle_status_en_service', raise_if_not_found=False)
+        update_vals = {
             'repair_order_id': repair_order.id,
             'next_service_type': 'repair'
-        })
+        }
+        if repair_status:
+            update_vals['status_id'] = repair_status.id
+        self.write(update_vals)
 
         # Ouvrir le formulaire de réparation
         return {
