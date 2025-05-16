@@ -61,5 +61,19 @@
             <field name="padding">5</field>
             <field name="company_id" eval="False"/>
         </record>
+
+        <record id="seq_gpl_repair_order" model="ir.sequence">
+            <field name="name">Séquence Réparation GPL</field>
+            <field name="code">gpl.repair.order</field>
+            <field name="prefix">REP/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Tag pour les réparations GPL -->
+        <record id="tag_gpl_repair" model="gpl.vehicle.tag">
+            <field name="name">Réparation GPL</field>
+            <field name="color">3</field>
+        </record>
     </data>
 </odoo>

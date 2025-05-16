@@ -150,6 +150,10 @@ class GplVehicle(models.Model):
         compute="_compute_count_all",
         string='Installations'
     )
+    repair_count = fields.Integer(
+        string='Nombre de réparations',
+        compute='_compute_repair_count'
+    )
 
     @api.depends('installation_id')
     def _compute_count_all(self):
@@ -174,6 +178,77 @@ class GplVehicle(models.Model):
             'context': {'default_vehicle_id': self.id}
         }
 
+    def _compute_repair_count(self):
+        """Calcule le nombre de réparations pour chaque véhicule"""
+        for vehicle in self:
+            vehicle.repair_count = self.env['gpl.repair.order'].search_count([
+                ('vehicle_id', '=', vehicle.id)
+            ])
+
+    def action_create_new_repair(self):
+        """
+        Crée une nouvelle réparation GPL pour le véhicule
+        """
+        self.ensure_one()
+
+        # Vérifie si une réparation existe déjà
+        existing_repair = self.env['gpl.repair.order'].search([
+            ('vehicle_id', '=', self.id),
+            ('state', 'in', ['draft', 'scheduled', 'preparation', 'in_progress'])
+        ], limit=1)
+
+        if existing_repair:
+            return {
+                'name': _('Réparation GPL existante'),
+                'view_mode': 'form',
+                'res_model': 'gpl.repair.order',
+                'res_id': existing_repair.id,
+                'type': 'ir.actions.act_window',
+            }
+
+        # Créer une nouvelle réparation
+        repair_vals = {
+            'vehicle_id': self.id,
+            'client_id': self.client_id.id,
+            'date_repair': fields.Date.today(),
+        }
+
+        new_repair = self.env['gpl.repair.order'].create(repair_vals)
+
+        # Mettre à jour le statut du véhicule
+        status_value = self.env.ref('gpl_fleet.vehicle_status_planifie', raise_if_not_found=False)
+        if status_value:
+            self.write({
+                'status_id': status_value.id,
+                'next_service_type': 'repair'
+            })
+
+        return {
+            'name': _('Nouvelle Réparation GPL'),
+            'view_mode': 'form',
+            'res_model': 'gpl.repair.order',
+            'res_id': new_repair.id,
+            'type': 'ir.actions.act_window',
+        }
+
+    def action_view_repairs(self):
+        """
+        Ouvre la liste des réparations pour ce véhicule
+        """
+        self.ensure_one()
+
+        return {
+            'name': _('Réparations de %s') % self.name,
+            'view_mode': 'tree,form,kanban',
+            'res_model': 'gpl.repair.order',
+            'domain': [('vehicle_id', '=', self.id)],
+            'context': {
+                'default_vehicle_id': self.id,
+                'default_client_id': self.client_id.id if self.client_id else False,
+                'search_default_vehicle_id': self.id
+            },
+            'type': 'ir.actions.act_window',
+        }
     @api.depends('model_id.brand_id.name', 'model_id.name', 'license_plate')
     def _compute_vehicle_name(self):
         for record in self:

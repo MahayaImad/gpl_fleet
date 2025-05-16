@@ -14,11 +14,11 @@
                             type="object"
                             class="oe_highlight"
                             invisible="next_service_type != 'installation' or appointment_date == False"/>
-                    <button name="action_create_repair_order"
-                            string="Créer réparation"
-                            type="object"
-                            class="oe_highlight"
-                            invisible="next_service_type != 'repair' or appointment_date == False"/>
+                    <button name="action_create_new_repair"
+                        string="Créer réparation"
+                        type="object"
+                        class="oe_highlight"
+                        invisible="next_service_type != 'repair' or appointment_date == False"/>
                     <button name="action_create_inspection"
                             string="Contrôle Technique"
                             type="object"
@@ -45,6 +45,17 @@
                                 <span class="o_stat_text">Installations</span>
                             </div>
                         </button>
+                        <button name="action_view_repairs"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-wrench"
+                            help="Voir les réparations GPL associées à ce véhicule"
+                            invisible="repair_count == 0">
+                        <div class="o_stat_info">
+                            <field name="repair_count" class="o_stat_value"/>
+                            <span class="o_stat_text">Réparations</span>
+                        </div>
+                    </button>
                     </div>
                     <div class="oe_title">
                         <label for="license_plate"/>
@@ -376,8 +387,6 @@
             </p>
         </field>
     </record>
-
-    <menuitem id="gpl_fleet_vehicle_tag_menu" parent="gpl_fleet_vehicles_configuration" action="gpl_fleet_vehicle_tag_action" sequence="20"/>
 
     <record id="gpl_vehicle_today_appointments_view_tree" model="ir.ui.view">
         <field name="name">gpl.vehicle.today.appointments.tree</field>

@@ -30,7 +30,6 @@
             'account',  # For account.move (invoice_id)
             'mail',# For mail.thread, mail.activity.mixin
             'sale',
-            'repair',
         ],
     # always loaded
     'data': [
@@ -44,10 +43,11 @@
         'views/gpl_repair_views.xml',
         'views/gpl_inspection_views.xml',
         'views/gpl_reservoir_testing_views.xml',
+
+        'views/product_template.xml',
         'views/res_config_settings_views.xml',
         'views/gpl_menus.xml',
     ],
-    'icon': '/gpl_fleet/static/description/icon.png',
     'installable': True,
     'application': True,
     'license': 'LGPL-3',

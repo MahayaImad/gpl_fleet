@@ -39,8 +39,5 @@
             <field name="context">{'module' : 'gpl_fleet'}</field>
         </record>
 
-        <menuitem id="fleet_config_settings_menu" name="Settings"
-            parent="gpl_fleet.gpl_fleet_configuration" sequence="0" action="action_gpl_configuration"
-            groups="base.group_system"/>
     </data>
 </odoo>

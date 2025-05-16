@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="product_template_form_view_reservoir_inherit" model="ir.ui.view">
+        <field name="name">product.template.form.reservoir.inherit</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+
+            <!-- Ajouter le toggle dans l'onglet général -->
+            <xpath expr="//div[@name='options']" position="replace">
+                <div name="options">
+                    <span class="d-inline-block">
+                        <field name="sale_ok"/>
+                        <label for="sale_ok"/>
+                    </span>
+                    <span class="d-inline-block">
+                        <field name="purchase_ok"/>
+                        <label for="purchase_ok"/>
+                    </span>
+                    <span class="d-inline-block">
+                        <field name="is_gpl_reservoir" readonly="0"
+                               modifiers="{'readonly': [['is_reservoir_readonly', '=', true]]}"/>
+                        <label for="is_gpl_reservoir"/>
+                    </span>
+                    <span class="d-inline-block">
+                        <field name="is_gpl_kit" readonly="1"/>
+                        <label for="is_gpl_kit"/>
+                    </span>
+                </div>
+            </xpath>
+
+            <xpath expr="//page[@name='general_information']" position="after">
+                <page string="Détails Réservoir" name="reservoirs" invisible="not is_gpl_reservoir">
+                    <group name="reservoir">
+                        <group name="reservoir_details" string="Fiche Réservoir">
+                            <field name="capacity"/>
+                            <field name="shape"/>
+                            <field name="fabricant_id" />
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

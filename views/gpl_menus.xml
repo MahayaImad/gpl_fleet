@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+    <record id="action_new_reservoir_product" model="ir.actions.act_window">
+        <field name="name">Nouveau Produit</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+
     <!-- Menu racine principal -->
     <menuitem id="gpl_menu_root" name="Installation GPL" sequence="1" />
 
@@ -29,7 +37,7 @@
     <menuitem id="menu_repair_order_gpl"
               name="Réparations GPL"
               parent="menu_gpl_operations"
-              action="action_repair_order_gpl"
+              action="action_gpl_repair_order"
               sequence="20"/>
     <menuitem id="menu_gpl_inspection"
               name="Contrôles Techniques"
@@ -157,11 +165,4 @@
     <menuitem name="Véhicule" parent="gpl_fleet_configuration" id="gpl_fleet_vehicles_configuration" sequence="30" />
     <menuitem id="gpl_fleet_vehicle_tag_menu" parent="gpl_fleet_vehicles_configuration" action="gpl_fleet_vehicle_tag_action" sequence="20"/>
 
-
-     <record id="action_new_reservoir_product" model="ir.actions.act_window">
-        <field name="name">Nouveau Produit</field>
-        <field name="res_model">product.template</field>
-        <field name="view_mode">form</field>
-        <field name="target">current</field>
-    </record>
 </odoo>
