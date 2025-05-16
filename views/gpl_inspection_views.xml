@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vue formulaire pour gpl.inspection -->
+    <record id="view_gpl_inspection_form" model="ir.ui.view">
+        <field name="name">gpl.inspection.form</field>
+        <field name="model">gpl.inspection</field>
+        <field name="arch" type="xml">
+            <form string="Contrôle Technique GPL">
+                <header>
+                    <button name="action_schedule" string="Planifier" type="object"
+                            class="oe_highlight"
+                            modifiers="{'readonly': [('can_schedule', '=', False)]}"/>
+                    <button name="action_start" string="Démarrer" type="object"
+                            class="oe_highlight"
+                            modifiers="{'readonly': [('can_start', '=', False)]}"/>
+                    <button name="action_validate" string="Valider" type="object"
+                            class="oe_highlight"
+                            modifiers="{'readonly': [('can_validate', '=', False)]}"/>
+                    <button name="action_fail" string="Refuser" type="object"
+                            class="btn-danger"
+                            modifiers="{'readonly': [('can_fail', '=', False)]}"/>
+                    <button name="action_cancel" string="Annuler" type="object"
+                            modifiers="{'readonly': [('can_cancel', '=', False)]}"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,scheduled,in_progress,passed,failed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="vehicle_id" options="{'no_create': True}" readonly="state != 'draft'"/>
+                            <field name="client_id" readonly="1"/>
+                            <field name="date_inspection" readonly ="state in ['passed', 'failed', 'canceled']"/>
+                        </group>
+                        <group>
+                            <field name="inspector_id" options="{'no_create': True}" readonly ="state in ['passed', 'failed', 'canceled']"/>
+                            <field name="validation_certificate" required = "state == 'passed'" readonly ="state !=  'in_progress'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notes et observations">
+                            <field name="notes" placeholder="Observations détaillées du contrôle technique..."
+                                   readonly ="state in ['passed', 'failed', 'canceled']"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vue arbre pour gpl.inspection -->
+    <record id="view_gpl_inspection_tree" model="ir.ui.view">
+        <field name="name">gpl.inspection.tree</field>
+        <field name="model">gpl.inspection</field>
+        <field name="arch" type="xml">
+            <tree string="Contrôles Techniques" decoration-info="state == 'draft'"
+                  decoration-primary="state == 'scheduled'" decoration-warning="state == 'in_progress'"
+                  decoration-success="state == 'passed'" decoration-danger="state == 'failed'">
+                <field name="name"/>
+                <field name="vehicle_id"/>
+                <field name="client_id"/>
+                <field name="date_inspection"/>
+                <field name="inspector_id"/>
+                <field name="validation_certificate"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vue recherche pour gpl.inspection -->
+    <record id="view_gpl_inspection_search" model="ir.ui.view">
+        <field name="name">gpl.inspection.search</field>
+        <field name="model">gpl.inspection</field>
+        <field name="arch" type="xml">
+            <search string="Recherche Contrôles Techniques">
+                <field name="name"/>
+                <field name="vehicle_id"/>
+                <field name="client_id"/>
+                <field name="inspector_id"/>
+                <field name="validation_certificate"/>
+                <separator/>
+                <filter string="Brouillon" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Planifié" name="scheduled" domain="[('state', '=', 'scheduled')]"/>
+                <filter string="En cours" name="in_progress" domain="[('state', '=', 'in_progress')]"/>
+                <filter string="Validé" name="passed" domain="[('state', '=', 'passed')]"/>
+                <filter string="Refusé" name="failed" domain="[('state', '=', 'failed')]"/>
+                <group expand="1" string="Regrouper par">
+                    <filter string="Véhicule" name="vehicle" context="{'group_by': 'vehicle_id'}"/>
+                    <filter string="Client" name="client" context="{'group_by': 'client_id'}"/>
+                    <filter string="Inspecteur" name="inspector" context="{'group_by': 'inspector_id'}"/>
+                    <filter string="État" name="state" context="{'group_by': 'state'}"/>
+                    <filter string="Date" name="date" context="{'group_by': 'date_inspection'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action pour gpl.inspection -->
+    <record id="action_gpl_inspection" model="ir.actions.act_window">
+        <field name="name">Contrôles Techniques</field>
+        <field name="res_model">gpl.inspection</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Créer un nouveau contrôle technique
+            </p>
+            <p>
+                Gérez les contrôles techniques et validations officielles de vos installations GPL.
+            </p>
+        </field>
+    </record>
+
+</odoo>

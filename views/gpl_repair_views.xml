@@ -144,10 +144,4 @@
         </field>
     </record>
 
-    <!-- Menu pour accéder aux réparations GPL -->
-    <menuitem id="menu_repair_order_gpl"
-              name="Réparations GPL"
-              parent="gpl_fleet.menu_gpl_operations"
-              action="action_repair_order_gpl"
-              sequence="20"/>
 </odoo>

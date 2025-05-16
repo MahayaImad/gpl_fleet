@@ -45,5 +45,21 @@
             <field name="color">5</field>
             <field name="is_done">True</field>
         </record>
+
+        <record id="seq_gpl_inspection" model="ir.sequence">
+            <field name="name">Séquence Contrôle Technique GPL</field>
+            <field name="code">gpl.inspection</field>
+            <field name="prefix">CTRL/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_gpl_reservoir_testing" model="ir.sequence">
+            <field name="name">Séquence Réépreuve Réservoir GPL</field>
+            <field name="code">gpl.reservoir.testing</field>
+            <field name="prefix">REPR/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
     </data>
 </odoo>

@@ -141,24 +141,24 @@
                         </page>
                     </notebook>
 
-                    <div class="alert alert-info" role="status" invisible="state != 'draft'">
+                    <div id="info_1" class="alert alert-info" role="status" invisible="state != 'draft'">
                         <strong>Étape 1 :</strong>
                         <strong>Comment utiliser:</strong> Ajoutez les produits nécessaires pour cette installation.
                             Une fois la préparation validée, un bon de commande client sera automatiquement créé.
                     </div>
-                    <div class="alert alert-primary" role="status" invisible="state != 'planned'">
+                    <div id="info_2" class="alert alert-primary" role="status" invisible="state != 'planned'">
                         <strong>Étape 2 :</strong>
                         Créez le bon de livraison pour réserver les produits nécessaires à l'installation.
                     </div>
-                    <div class="alert alert-warning" role="status" invisible="state != 'in_progress'">
+                    <div id="info_3" class="alert alert-warning" role="status" invisible="state != 'in_progress'">
                         <strong>Étape 3 :</strong>
                         L'installation est en cours. Cliquez sur "Terminer installation" une fois complétée.
                     </div>
-                    <div class="alert alert-success" role="status" invisible="state != 'done'">
+                    <div id="info_4" class="alert alert-success" role="status" invisible="state != 'done'">
                         <strong>Installation terminée !</strong>
                         Vous pouvez maintenant créer la facture client.
                     </div>
-                    <div class="alert alert-danger" role="status" invisible="state != 'cancel'">
+                    <div id="info_5" class="alert alert-danger" role="status" invisible="state != 'cancel'">
                         <strong>Installation annulée.</strong>
                         Vous pouvez la remettre en brouillon si nécessaire.
                     </div>
@@ -169,7 +169,6 @@
             </form>
         </field>
     </record>
-
 
     <!-- Vue arbre (liste) pour gpl.service.installation -->
     <record id="view_gpl_service_installation_tree" model="ir.ui.view">
@@ -364,30 +363,82 @@
     </record>
 
     <!-- Vue arbre spécifique pour les lignes d'installation -->
-<record id="view_gpl_installation_line_tree" model="ir.ui.view">
-    <field name="name">gpl.installation.line.tree</field>
-    <field name="model">gpl.installation.line</field>
-    <field name="arch" type="xml">
-        <tree string="Produits utilisés" editable="bottom">
-            <field name="product_id" options="{'no_create': True}" required="1"/>
-            <field name="lot_id" domain="[('id', 'in', available_lot_ids)]" options="{'no_create': True}"/>
-            <field name="product_uom_qty"/>
-            <field name="serial_number" readonly="1"/>
-            <field name="is_gpl_reservoir" invisible="1"/>
-            <field name="qty_available" widget="badge"
-                   decoration-danger="qty_available &lt; product_uom_qty"
-                   decoration-success="qty_available &gt;= product_uom_qty"/>
-            <field name="price_unit"/>
-            <field name="price_subtotal" sum="Total"/>
-            <field name="available_lot_ids" invisible="1"/>
-        </tree>
-    </field>
-</record>
+    <record id="view_gpl_installation_line_tree" model="ir.ui.view">
+        <field name="name">gpl.installation.line.tree</field>
+        <field name="model">gpl.installation.line</field>
+        <field name="arch" type="xml">
+            <tree string="Produits utilisés" editable="bottom">
+                <field name="product_id" options="{'no_create': True}" required="1"/>
+                <field name="lot_id" domain="[('id', 'in', available_lot_ids)]" options="{'no_create': True}"/>
+                <field name="product_uom_qty"/>
+                <field name="serial_number" readonly="1"/>
+                <field name="is_gpl_reservoir" invisible="1"/>
+                <field name="qty_available" widget="badge"
+                       decoration-danger="qty_available &lt; product_uom_qty"
+                       decoration-success="qty_available &gt;= product_uom_qty"/>
+                <field name="price_unit"/>
+                <field name="price_subtotal" sum="Total"/>
+                <field name="available_lot_ids" invisible="1"/>
+            </tree>
+        </field>
+    </record>
 
-    <!-- Sous-menu pour les opérations -->
-    <menuitem id="menu_gpl_operations" name="Opérations" parent="gpl_menu_root" sequence="10"/>
+    <record id="view_form_gpl_service_installation_simplified" model="ir.ui.view">
+        <field name="name">gpl.service.installation.form.simplified</field>
+        <field name="model">gpl.service.installation</field>
+        <field name="inherit_id" ref="gpl_fleet.view_form_gpl_service_installation"/>
+        <field name="arch" type="xml">
+            <!-- Ajouter un indicateur de flux simplifié dans l'en-tête -->
+            <xpath expr="//header" position="inside">
+                <field name="use_simplified_flow" invisible="1"/>
+                <div class="badge text-bg-info" invisible="use_simplified_flow == False">
+                    Mode simplifié
+                </div>
+            </xpath>
 
-    <!-- Menu pour les installations -->
-    <menuitem id="menu_gpl_service_installation" name="Installations" action="action_gpl_service_installation"
-              parent="menu_gpl_operations" sequence="10"/>
+
+
+            <xpath expr="//button[@name='action_create_picking']" position="attributes">
+                <attribute name="invisible" invisible="state != 'planned' and use_simplified_flow == True"/>
+            </xpath>
+
+            <!-- Adapter les messages d'aide selon le mode -->
+            <xpath expr="//div[@id='info_1']" position="replace">
+                <div class="alert alert-info" role="status" invisible="state != 'draft'">
+                    <strong>Étape 1 :</strong>
+                    <div invisible="use_simplified_flow == False">
+                        <strong>Mode simplifié activé:</strong>
+                        Ajoutez les produits nécessaires pour cette installation.
+                        Une fois la préparation validée, un bon de commande client et un bon de livraison seront automatiquement créés.
+                    </div>
+                    <div invisible="use_simplified_flow == True">
+                        <strong>Comment utiliser:</strong> Ajoutez les produits nécessaires pour cette installation.
+                        Une fois la préparation validée, un bon de commande client sera automatiquement créé.
+                    </div>
+                </div>
+            </xpath>
+
+            <xpath expr="//div[@id='info_2']" position="attributes">
+                <attribute name="invisible" invisible="state != 'planned' and use_simplified_flow == True"/>
+            </xpath>
+
+            <xpath expr="//div[@id='info_4']" position="replace">
+                <div class="alert alert-success" role="status" invisible="state != 'done'">
+                    <strong>Installation terminée !</strong>
+                    <span invisible="invoice_id == False">
+                        <span invisible="use_simplified_flow == False">
+                            La facture sera créée automatiquement.
+                        </span>
+                        <span invisible="use_simplified_flow == True">
+                            Vous pouvez maintenant créer la facture client.
+                        </span>
+                    </span>
+                    <span invisible="invoice_id == False">
+                        La facture a été créée.
+                    </span>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>

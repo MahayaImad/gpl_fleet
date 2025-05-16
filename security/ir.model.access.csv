@@ -7,3 +7,5 @@ gpl_fleet.access_gpl_service_installation,access_gpl_service_installation,gpl_fl
 gpl_fleet.access_gpl_installation_line,access_gpl_installation_line,gpl_fleet.model_gpl_installation_line,base.group_user,1,1,1,1
 access_gpl_vehicle_status_user,gpl.vehicle.status.user,model_gpl_vehicle_status,base.group_user,1,1,1,1
 gpl_fleet.access_gpl_installation_product_line,access_gpl_installation_product_line,gpl_fleet.model_gpl_installation_product_line,base.group_user,1,1,1,1
+access_gpl_inspection,access_gpl_inspection,model_gpl_inspection,base.group_user,1,1,1,1
+access_gpl_reservoir_testing,access_gpl_reservoir_testing,model_gpl_reservoir_testing,base.group_user,1,1,1,1

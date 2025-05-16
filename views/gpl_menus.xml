@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Menu racine principal -->
+    <menuitem id="gpl_menu_root" name="Installation GPL" sequence="1" />
+
+    <!-- Menu Atelier GPL -->
+    <menuitem name="Atelier GPL" parent="gpl_menu_root" id="gpl_fleet_vehicles" sequence="2" />
+
+    <!-- Sous-menus de l'Atelier GPL -->
+    <menuitem action="gpl_fleet_vehicle_action" parent="gpl_fleet_vehicles" name="Véhicules"
+        id="gpl_fleet_vehicle_menu" sequence="0"/>
+    <menuitem action="gpl_fleet_vehicle_status_action" parent="gpl_fleet_vehicles" name="Suivi du Flux"
+        id="gpl_fleet_vehicle_status_menu" sequence="1"/>
+    <menuitem id="menu_today_appointments"
+              name="RDV du jour"
+              parent="gpl_fleet_vehicles"
+              action="action_today_appointments"
+              sequence="2"/>
+
+    <!-- Menu Opérations -->
+    <menuitem id="menu_gpl_operations" name="Opérations" parent="gpl_menu_root" sequence="2"/>
+
+    <!-- Sous-menus des Opérations -->
+    <menuitem id="menu_gpl_service_installation"
+              name="Installations"
+              action="action_gpl_service_installation"
+              parent="menu_gpl_operations"
+              sequence="10"/>
+    <menuitem id="menu_repair_order_gpl"
+              name="Réparations GPL"
+              parent="menu_gpl_operations"
+              action="action_repair_order_gpl"
+              sequence="20"/>
+    <menuitem id="menu_gpl_inspection"
+              name="Contrôles Techniques"
+              parent="menu_gpl_operations"
+              action="action_gpl_inspection"
+              sequence="30"/>
+    <menuitem id="menu_gpl_reservoir_testing"
+              name="Réépreuves Réservoirs"
+              parent="menu_gpl_operations"
+              action="action_gpl_reservoir_testing"
+              sequence="40"/>
+
+    <!-- Menu Stock -->
+    <menuitem name="Stock" parent="gpl_menu_root" id="gpl_reservoir_menu_root" sequence="3" />
+
+    <!-- Sous-menus du Stock -->
+    <menuitem name="Vue d'ensemble" parent="gpl_reservoir_menu_root" id="menu_gpl_stock_general_vue" sequence="10" />
+    <menuitem id="menu_gpl_stock_general_vue_resume"
+              name="Aperçu du stock"
+              parent="menu_gpl_stock_general_vue"
+              action="stock.stock_picking_type_action" sequence="1" />
+
+    <menuitem name="En Stock" parent="gpl_reservoir_menu_root" id="gpl_reservoir_menu_stock_etat" sequence="20" />
+    <menuitem id="menu_gpl_products_state"
+              name="Tous les produits"
+              parent="gpl_reservoir_menu_stock_etat"
+              action="product.product_template_action" sequence="2" />
+    <menuitem id="menu_gpl_lot_state"
+              name="Lots/Numéros de série"
+              parent="gpl_reservoir_menu_stock_etat"
+              action="stock.action_production_lot_form" sequence="3" />
+
+    <menuitem name="Création" parent="gpl_reservoir_menu_root" id="gpl_reservoir_menu_stock_creation" sequence="30" />
+    <menuitem id="menu_new_reservoir_product"
+          name="Nouveau Produit"
+          parent="gpl_reservoir_menu_stock_creation"
+          action="gpl_fleet.action_new_reservoir_product"
+          sequence="3"/>
+
+    <!-- Menu Achats -->
+    <menuitem name="Achats" parent="gpl_menu_root" id="gpl_purchase_menu_root" sequence="4" />
+
+    <!-- Sous-menus des Achats -->
+    <menuitem name="Commandes" parent="gpl_purchase_menu_root" id="menu_gpl_purchase_order" sequence="20" />
+    <menuitem id="menu_gpl_purchase_general_vue_resume"
+      name="Demandes de prix"
+      parent="menu_gpl_purchase_order"
+      action="purchase.purchase_rfq" sequence="1" />
+    <menuitem id="menu_gpl_purchase_request_price"
+          name="Bons de commande"
+          parent="menu_gpl_purchase_order"
+          action="purchase.purchase_form_action" sequence="2" />
+
+    <menuitem name="Factures" parent="gpl_purchase_menu_root" id="menu_gpl_purchase_bills" sequence="30" />
+    <menuitem id="menu_gpl_purchase_bills_list"
+          name="Factures d'achat"
+          parent="menu_gpl_purchase_bills"
+          action="account.action_move_in_invoice_type" sequence="1" />
+    <menuitem id="menu_gpl_purchase_move_in_refund_type"
+      name="Remboursements"
+      parent="menu_gpl_purchase_bills"
+      action="account.action_move_in_refund_type" sequence="2" />
+    <menuitem id="menu_gpl_account_payments_payable"
+      name="Paiements Fournisseurs"
+      parent="menu_gpl_purchase_bills"
+      action="account.action_account_payments_payable" sequence="3" />
+    <menuitem id="menu_gpl_account_res_partner_action_supplier"
+      name="Fournisseurs"
+      parent="menu_gpl_purchase_bills"
+      action="account.res_partner_action_supplier" sequence="4" />
+
+    <!-- Menu Ventes -->
+    <menuitem name="Ventes" parent="gpl_menu_root" id="gpl_sales_menu_root" sequence="5" />
+
+    <!-- Sous-menus des Ventes -->
+    <menuitem name="Commandes Clients" parent="gpl_sales_menu_root" id="menu_gpl_sales_order" sequence="20" />
+    <menuitem id="menu_gpl_sale_action_quotations"
+      name="Devis"
+      parent="menu_gpl_sales_order"
+      action="sale.action_quotations" sequence="1" />
+    <menuitem id="menu_gpl_sale_action_orders"
+          name="Bons de commande"
+          parent="menu_gpl_sales_order"
+          action="sale.action_orders" sequence="2" />
+
+    <menuitem name="Factures" parent="gpl_sales_menu_root" id="menu_gpl_sale_bills" sequence="30" />
+    <menuitem id="menu_gpl_sale_bills_list"
+          name="Factures de Vente"
+          parent="menu_gpl_sale_bills"
+          action="account.action_move_out_invoice_type" sequence="1" />
+    <menuitem id="menu_gpl_purchase_move_out_refund_type"
+      name="Avoirs"
+      parent="menu_gpl_sale_bills"
+      action="account.action_move_out_refund_type" sequence="2" />
+    <menuitem id="menu_gpl_account_account_payments"
+      name="Paiements Clients"
+      parent="menu_gpl_sale_bills"
+      action="account.action_account_payments" sequence="3" />
+    <menuitem id="menu_gpl_account_res_partner_action_customer"
+      name="Clients"
+      parent="menu_gpl_sale_bills"
+      action="account.res_partner_action_customer" sequence="4" />
+    <menuitem id="menu_gpl_account_moves_all_tree"
+      name="All"
+      parent="menu_gpl_sale_bills"
+      action="account.action_account_moves_all" sequence="5" />
+
+    <!-- Menu Configuration -->
+    <menuitem id="gpl_fleet_configuration" name="Configuration" parent="gpl_menu_root" sequence="100" />
+
+    <!-- Sous-menus de Configuration -->
+    <menuitem id="fleet_config_settings_menu"
+              name="Paramètres"
+              parent="gpl_fleet.gpl_fleet_configuration"
+              sequence="0"
+              action="action_gpl_configuration"
+              groups="base.group_system"/>
+
+    <menuitem name="Models" parent="gpl_fleet_configuration" id="gpl_fleet_models_configuration" sequence="10"/>
+    <menuitem action="gpl_fleet_vehicle_model_brand_action" parent="gpl_fleet_models_configuration" id="gpl_fleet_vehicle_model_brand_menu" sequence="1"/>
+    <menuitem action="gpl_fleet_vehicle_model_action" parent="gpl_fleet_models_configuration" id="gpl_fleet_vehicle_model_menu" sequence="5"/>
+    <menuitem action="gpl_fleet_vehicle_model_category_action" parent="gpl_fleet_models_configuration" id="gpl_fleet_vehicle_model_category_menu" sequence="10"/>
+
+
+    <menuitem name="Véhicule" parent="gpl_fleet_configuration" id="gpl_fleet_vehicles_configuration" sequence="30" />
+    <menuitem id="gpl_fleet_vehicle_tag_menu" parent="gpl_fleet_vehicles_configuration" action="gpl_fleet_vehicle_tag_action" sequence="20"/>
+
+
+     <record id="action_new_reservoir_product" model="ir.actions.act_window">
+        <field name="name">Nouveau Produit</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+</odoo>

@@ -45,13 +45,3 @@ class ProductTemplate(models.Model):
                 if found_reservoir:
                     break
             template.is_gpl_kit = found_reservoir
-
-
-class GplReservoirFabricant(models.Model):
-    _name = 'gpl.reservoir.fabricant'  # Fixed from *name to _name
-    _description = 'Fabricant de réservoirs GPL'  # Fixed from *description to _description
-
-    name = fields.Char(string="Nom du fabricant", required=True)
-    code = fields.Char(string="Code fabricant")
-    active = fields.Boolean(default=True)
-    note = fields.Text(string="Notes")

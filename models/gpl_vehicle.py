@@ -24,9 +24,8 @@ class GplVehicle(models.Model):
     next_service_type = fields.Selection([
         ('installation', 'Installation GPL'),
         ('repair', 'Réparation'),
-        ('inspection', 'Contrôle Technique'),
-        ('testing', 'Test Réservoir (Réépreuve)'),
-        ('validation', 'Validation Officielle'),
+        ('inspection', 'Contrôle Technique/Validation'),
+        ('testing', 'Réépreuve Réservoir'),
     ], string='Prochain Service', tracking=True)
 
     appointment_date = fields.Datetime('Date de Rendez-vous', tracking=True)
@@ -328,6 +327,105 @@ class GplVehicle(models.Model):
             'view_mode': 'form',
             'res_model': 'repair.order',
             'res_id': repair_order.id,
+            'type': 'ir.actions.act_window',
+        }
+
+    def action_create_inspection(self):
+        """
+        Crée un nouveau contrôle technique/validation pour le véhicule
+        """
+        self.ensure_one()
+
+        # Rechercher d'abord s'il existe un contrôle non terminé
+        existing_inspection = self.env['gpl.inspection'].search([
+            ('vehicle_id', '=', self.id),
+            ('state', 'in', ['draft', 'scheduled', 'in_progress'])
+        ], limit=1)
+
+        if existing_inspection:
+            # S'il y a un contrôle existant non terminé, l'ouvrir
+            return {
+                'name': _('Contrôle Technique existant'),
+                'view_mode': 'form',
+                'res_model': 'gpl.inspection',
+                'res_id': existing_inspection.id,
+                'type': 'ir.actions.act_window',
+            }
+
+        # Récupération du statut "En service"
+        in_progress_status = self.env.ref('gpl_fleet.vehicle_status_en_service', raise_if_not_found=False)
+
+        # Création du contrôle technique
+        inspection_vals = {
+            'vehicle_id': self.id,
+            'date_inspection': fields.Date.today(),
+        }
+
+        inspection = self.env['gpl.inspection'].create(inspection_vals)
+
+        # Mise à jour du statut du véhicule
+        if in_progress_status:
+            self.write({
+                'status_id': in_progress_status.id,
+            })
+
+        # Redirection vers le formulaire de contrôle
+        return {
+            'name': _('Contrôle Technique'),
+            'view_mode': 'form',
+            'res_model': 'gpl.inspection',
+            'res_id': inspection.id,
+            'type': 'ir.actions.act_window',
+        }
+
+    def action_create_reservoir_testing(self):
+        """
+        Crée une nouvelle réépreuve de réservoir pour le véhicule
+        """
+        self.ensure_one()
+
+        if not self.reservoir_lot_id:
+            raise UserError(_("Ce véhicule n'a pas de réservoir GPL installé. Impossible de créer une réépreuve."))
+
+        # Rechercher d'abord s'il existe une réépreuve non terminée
+        existing_testing = self.env['gpl.reservoir.testing'].search([
+            ('vehicle_id', '=', self.id),
+            ('state', 'in', ['draft', 'scheduled', 'in_progress'])
+        ], limit=1)
+
+        if existing_testing:
+            # S'il y a une réépreuve existante non terminée, l'ouvrir
+            return {
+                'name': _('Réépreuve Réservoir existante'),
+                'view_mode': 'form',
+                'res_model': 'gpl.reservoir.testing',
+                'res_id': existing_testing.id,
+                'type': 'ir.actions.act_window',
+            }
+
+        # Récupération du statut "En service"
+        in_progress_status = self.env.ref('gpl_fleet.vehicle_status_en_service', raise_if_not_found=False)
+
+        # Création de la réépreuve
+        testing_vals = {
+            'vehicle_id': self.id,
+            'date_testing': fields.Date.today(),
+        }
+
+        testing = self.env['gpl.reservoir.testing'].create(testing_vals)
+
+        # Mise à jour du statut du véhicule
+        if in_progress_status:
+            self.write({
+                'status_id': in_progress_status.id,
+            })
+
+        # Redirection vers le formulaire de réépreuve
+        return {
+            'name': _('Réépreuve Réservoir'),
+            'view_mode': 'form',
+            'res_model': 'gpl.reservoir.testing',
+            'res_id': testing.id,
             'type': 'ir.actions.act_window',
         }
 class FleetVehicleModel(models.Model):

@@ -19,6 +19,16 @@
                             type="object"
                             class="oe_highlight"
                             invisible="next_service_type != 'repair' or appointment_date == False"/>
+                    <button name="action_create_inspection"
+                            string="Contrôle Technique"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="next_service_type != 'inspection' or appointment_date == False"/>
+                    <button name="action_create_reservoir_testing"
+                            string="Réépreuve Réservoir"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="next_service_type != 'testing' or appointment_date == False"/>
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
@@ -163,11 +173,11 @@
     <field name="model">gpl.vehicle</field>
     <field name="arch" type="xml">
         <kanban default_group_by="status_id"
-                records_draggable="1"
                 class="o_kanban_small_column"
                 kanban_archivable="false"
                 group_edit="false"
                 group_create="false"
+                records_draggable="0"
                 group_delete="false">
             <field name="status_id"/>
             <field name="color"/>
@@ -221,7 +231,7 @@
                                         record.next_service_type.raw_value and record.next_service_type.value == 'Installation GPL' ? 'bg-success' :
                                         record.next_service_type.raw_value and record.next_service_type.value == 'Réparation' ? 'bg-danger' :
                                         record.next_service_type.raw_value and record.next_service_type.value == 'Maintenance' ? 'bg-warning' :
-                                        record.next_service_type.raw_value and record.next_service_type.value == 'Inspection' ? 'bg-info' : 'bg-secondary'
+                                        record.next_service_type.raw_value and record.next_service_type.value == 'Inspection' ? 'bg-info' : 'bg-info'
                                     }" t-esc="record.next_service_type.value"/>
                                 </div>
 
@@ -316,16 +326,8 @@
         </field>
     </record>
 
-    <menuitem name="Atelier GPL" parent="gpl_menu_root" id="gpl_fleet_vehicles" sequence="2" />
-    <menuitem action="gpl_fleet_vehicle_action" parent="gpl_fleet_vehicles" name="Véhicules"
-        id="gpl_fleet_vehicle_menu" sequence="0"/>
-    <menuitem action="gpl_fleet_vehicle_status_action" parent="gpl_fleet_vehicles" name="Suivi du Flux"
-        id="gpl_fleet_vehicle_status_menu" sequence="1"/>
-
-   <!-- Autres vues pour les sous-modèles... -->
-
    <!-- Vue pour la gestion des statuts -->
-   <record id='gpl_vehicle_status_view_tree' model='ir.ui.view'>
+    <record id='gpl_vehicle_status_view_tree' model='ir.ui.view'>
         <field name="name">gpl.vehicle.status.tree</field>
         <field name="model">gpl.vehicle.status</field>
         <field name="arch" type="xml">
@@ -339,43 +341,6 @@
             </tree>
         </field>
     </record>
-
-    <record id='gpl_vehicle_status_view_form' model='ir.ui.view'>
-        <field name="name">gpl.vehicle.status.form</field>
-        <field name="model">gpl.vehicle.status</field>
-        <field name="arch" type="xml">
-            <form string="Statut du Véhicule">
-                <sheet>
-                    <group>
-                        <field name="name"/>
-                        <field name="sequence"/>
-                        <field name="description"/>
-                        <field name="is_done"/>
-                        <field name="color" widget="color_picker"/>
-                        <field name="fold"/>
-                    </group>
-                </sheet>
-            </form>
-        </field>
-    </record>
-
-    <record id='gpl_vehicle_status_action' model='ir.actions.act_window'>
-        <field name="name">Statuts des Véhicules</field>
-        <field name="res_model">gpl.vehicle.status</field>
-        <field name="view_mode">tree,form</field>
-        <field name="help" type="html">
-          <p class="o_view_nocontent_smiling_face">
-            Créez un nouveau statut
-          </p><p>
-            Vous pouvez personnaliser les statuts disponibles pour suivre l'évolution
-            de chaque véhicule dans votre processus de service.
-          </p>
-        </field>
-    </record>
-
-    <menuitem name="Configuration" parent="gpl_menu_root" id="gpl_fleet_configuration" sequence="100" />
-    <menuitem name="Véhicule" parent="gpl_fleet_configuration" id="gpl_fleet_vehicles_configuration" sequence="30" />
-    <menuitem action="gpl_vehicle_status_action" parent="gpl_fleet_vehicles_configuration" id="gpl_vehicle_status_menu" sequence="5"/>
 
     <record id="gpl_fleet_vehicle_tag_view_view_form" model="ir.ui.view">
         <field name="name">gpl.vehicle.tag.form</field>
@@ -451,10 +416,4 @@
         </field>
     </record>
 
-    <!-- Ajout au menu -->
-    <menuitem id="menu_today_appointments"
-              name="RDV du jour"
-              parent="gpl_fleet_vehicles"
-              action="action_today_appointments"
-              sequence="2"/>
 </odoo>

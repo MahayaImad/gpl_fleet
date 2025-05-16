@@ -59,6 +59,16 @@ class GplService(models.Model):
 
     sale_order_id = fields.Many2one('sale.order', string="Bon de commande client", copy=False)
 
+    # Nouveau champ pour indiquer si le flux simplifié est utilisé
+    use_simplified_flow = fields.Boolean(string="Flux simplifié", compute='_compute_use_simplified_flow')
+
+    @api.depends('company_id')
+    def _compute_use_simplified_flow(self):
+        # Récupérer les paramètres de configuration
+        simplified_flow = self.env['ir.config_parameter'].sudo().get_param('gpl_fleet.simplified_flow',
+                                                                           'False').lower() == 'true'
+        for record in self:
+            record.use_simplified_flow = simplified_flow
     @api.depends('installation_line_ids')
     def _compute_products_count(self):
         for record in self:
@@ -110,11 +120,150 @@ class GplService(models.Model):
             if not record.sale_order_id and record.installation_line_ids:
                 self._create_sale_order()
 
-            # Mettre à jour le statut
-            record.write({'state': 'planned', 'date_planned': fields.Date.today()})
-            msg = _("Préparation validée par %s") % self.env.user.name
-            record.message_post(body=msg)
+            # Vérifier si le flux simplifié est activé
+            simplified_flow = self.env['ir.config_parameter'].sudo().get_param('gpl_fleet.simplified_flow',
+                                                                               'False').lower() == 'true'
+
+            if simplified_flow:
+                # En mode simplifié, on passe directement de brouillon à en cours
+                # 1. Créer le bon de livraison
+                picking = record._create_simplified_picking()
+                if picking:
+                    # 2. Mettre à jour le statut
+                    record.write({
+                        'state': 'in_progress',
+                        'date_planned': fields.Date.today(),
+                        'picking_id': picking.id
+                    })
+                    msg = _("Mode simplifié : Préparation validée et bon de livraison %s créé par %s") % (
+                    picking.name, self.env.user.name)
+                    record.message_post(body=msg)
+            else:
+                # Mode standard
+                record.write({'state': 'planned', 'date_planned': fields.Date.today()})
+                msg = _("Préparation validée par %s") % self.env.user.name
+                record.message_post(body=msg)
+
         return True
+
+    def _create_simplified_picking(self):
+        """Crée un bon de livraison en mode simplifié sans demander confirmation"""
+        self.ensure_one()
+
+        if not self.installation_line_ids:
+            return False
+
+        if not self.client:
+            raise UserError(_("Aucun client associé au véhicule. Veuillez définir un client."))
+
+        picking_type = self.env['stock.picking.type'].search([('code', '=', 'outgoing')], limit=1)
+        if not picking_type:
+            raise UserError(_("Aucun type de picking 'Delivery Orders' configuré."))
+
+        # Trouver l'emplacement source et destination
+        location_src_id = picking_type.default_location_src_id or self.env.ref('stock.stock_location_stock',
+                                                                               raise_if_not_found=False)
+        if not location_src_id:
+            raise UserError(
+                _("Aucun emplacement source trouvé. Veuillez configurer un emplacement source dans le type d'opération ou dans le stock par défaut."))
+
+        # Pour l'emplacement de destination, essayons plusieurs options
+        location_dest_id = picking_type.default_location_dest_id
+        if not location_dest_id:
+            # Essayer de trouver l'emplacement "Client" par défaut
+            location_dest_id = self.env.ref('stock.stock_location_customers', raise_if_not_found=False)
+            if not location_dest_id:
+                # Sinon chercher tout emplacement qui pourrait être une destination externe
+                location_dest_id = self.env['stock.location'].search([
+                    ('usage', '=', 'customer'),
+                    '|', ('company_id', '=', self.env.company.id), ('company_id', '=', False)
+                ], limit=1)
+                if not location_dest_id:
+                    raise UserError(
+                        _("Aucun emplacement destination trouvé. Veuillez configurer un emplacement destination dans le type d'opération ou créer un emplacement 'Client'."))
+
+        try:
+            move_vals = []
+            for line in self.installation_line_ids:
+                # Créer le dictionnaire de valeurs avec une vérification des champs disponibles
+                vals = {
+                    'name': line.product_id.name,
+                    'product_id': line.product_id.id,
+                    'product_uom': line.product_id.uom_id.id,
+                    'location_id': location_src_id.id,
+                    'location_dest_id': location_dest_id.id,
+                }
+
+                # Ajouter le champ de quantité avec le bon nom selon la version d'Odoo
+                # Essayer d'abord 'quantity' (Odoo 17), puis 'product_uom_qty' (versions antérieures)
+                StockMove = self.env['stock.move']
+                if 'quantity' in StockMove._fields:
+                    vals['quantity'] = line.product_uom_qty
+                else:
+                    vals['product_uom_qty'] = line.product_uom_qty
+
+                move_vals.append((0, 0, vals))
+
+            picking = self.env['stock.picking'].create({
+                'picking_type_id': picking_type.id,
+                'partner_id': self.client.id,
+                'origin': self.name,
+                'location_id': location_src_id.id,
+                'location_dest_id': location_dest_id.id,
+                'move_ids': move_vals,
+            })
+
+            # Confirmer le bon de livraison
+            picking.action_confirm()
+
+            # Pour chaque ligne d'installation, associer le lot au mouvement correspondant
+            for line in self.installation_line_ids:
+                if line.lot_id and line.product_id:
+                    # Trouver le mouvement correspondant à cette ligne
+                    move = picking.move_ids.filtered(lambda m: m.product_id.id == line.product_id.id)
+
+                    if move:
+                        # Utiliser les API appropriées selon la version d'Odoo
+                        if hasattr(move, 'move_line_ids'):
+                            # Pour Odoo 15+
+                            for move_line in move.move_line_ids:
+                                move_line.lot_id = line.lot_id.id
+                                # Mettre à jour également le numéro de série si c'est un champ disponible
+                                if hasattr(move_line, 'lot_name'):
+                                    move_line.lot_name = line.serial_number
+                        else:
+                            # Fallback pour les versions antérieures
+                            for move_line in move.move_line_nosuggest_ids:
+                                move_line.lot_id = line.lot_id.id
+                                if hasattr(move_line, 'lot_name'):
+                                    move_line.lot_name = line.serial_number
+
+            # Réserver les produits
+            picking.action_assign()
+
+            # Si après réservation, certains lots n'ont pas été assignés, les forcer
+            for move in picking.move_ids:
+                if move.state != 'assigned':
+                    for move_line in move.move_line_ids:
+                        # Trouver la ligne d'installation correspondante
+                        install_line = self.installation_line_ids.filtered(
+                            lambda l: l.product_id.id == move.product_id.id)
+
+                        if install_line and install_line.lot_id:
+                            move_line.lot_id = install_line.lot_id.id
+                            if hasattr(move_line, 'lot_name'):
+                                move_line.lot_name = install_line.serial_number
+
+                            # Dans Odoo 17, le champ quantity s'appelle peut-être qty_done
+                            if hasattr(move_line, 'qty_done'):
+                                move_line.qty_done = install_line.product_uom_qty
+                            elif hasattr(move_line, 'quantity'):
+                                move_line.quantity = install_line.product_uom_qty
+
+            return picking
+
+        except Exception as e:
+            raise UserError(_("Erreur lors de la création du bon de livraison: %s") % str(e))
 
     def _create_sale_order(self):
         """Crée un bon de commande client basé sur les produits utilisés"""
@@ -313,16 +462,19 @@ class GplService(models.Model):
             }
         except Exception as e:
             raise UserError(_("Erreur lors de la création du bon de livraison: %s") % str(e))
+
     def action_complete_installation(self):
         for record in self:
             if not record.picking_id:
                 raise UserError(_("Aucun bon de livraison associé à cette installation."))
 
             try:
+                # 1. Valider le bon de livraison s'il n'est pas déjà validé
                 if record.picking_id.state != 'done':
+                    # Code existant pour valider le bon de livraison
                     for move in record.picking_id.move_ids.filtered(lambda m: m.state not in ['done', 'cancel']):
                         for move_line in move.move_line_ids:
-                            # Déterminer le nom du champ pour la quantité réservée
+                            # Définir les quantités...
                             reserved_qty = 0
                             if hasattr(move_line, 'product_uom_qty'):
                                 reserved_qty = move_line.product_uom_qty
@@ -335,16 +487,14 @@ class GplService(models.Model):
                             elif hasattr(move, 'quantity'):
                                 reserved_qty = move.quantity
                             else:
-                                # Fallback si aucun des attributs n'est trouvé
                                 reserved_qty = 1
 
-                            # Déterminer le nom du champ pour la quantité traitée
+                            # Appliquer les quantités
                             if hasattr(move_line, 'qty_done'):
                                 move_line.qty_done = reserved_qty
                             elif hasattr(move_line, 'quantity'):
                                 move_line.quantity = reserved_qty
                             else:
-                                # Si aucun attribut trouvé, essayer d'écrire directement avec la méthode write
                                 try:
                                     move_line.write({'quantity': reserved_qty})
                                 except Exception:
@@ -353,54 +503,113 @@ class GplService(models.Model):
                                     except Exception:
                                         pass
 
-                    # Valider le bon de livraison directement
+                    # Valider le bon de livraison
                     record.picking_id.button_validate()
 
+                # 2. Marquer l'installation comme terminée
                 record.write({
                     'state': 'done',
                     'date_completion': fields.Date.today()
                 })
 
-                msg = _("Installation terminée par %s") % self.env.user.name
+                # 3. Mettre à jour le véhicule avec le réservoir
+                if record.vehicle_id:
+                    # MODIFICATION ICI: Définir directement les statuts sans utiliser env.ref
+                    # Mettre à jour le statut et le prochain service
+                    vehicle_values = {
+                        'status_id': 4,  # ID du statut "En attente de validation"
+                        'next_service_type': 'inspection'  # Contrôle technique
+                    }
+
+                    # Si on a un réservoir, l'associer au véhicule
+                    reservoir_line = False
+                    for line in record.installation_line_ids:
+                        if line.product_id.is_gpl_reservoir and line.serial_number:
+                            reservoir_line = line
+                            lot = self.env['stock.lot'].search([
+                                ('name', '=', line.serial_number),
+                                ('product_id', '=', line.product_id.id)
+                            ], limit=1)
+
+                            if lot:
+                                vehicle_values.update({
+                                    'reservoir_lot_id': lot.id,
+                                    'installation_id': record.id
+                                })
+
+                                # Message de traçabilité
+                                vehicle_msg = _(
+                                    "Réservoir GPL (numéro de série: %s) installé via l'installation %s. Véhicule en attente de contrôle technique.") % (
+                                                  lot.name, record.name)
+                                record.vehicle_id.message_post(body=vehicle_msg)
+
+                    # Mettre à jour le véhicule
+                    record.vehicle_id.write(vehicle_values)
+
+                # 4. Facturation automatique si configurée
+                auto_invoice = self.env['ir.config_parameter'].sudo().get_param('gpl_fleet.auto_invoice',
+                                                                                'False').lower() == 'true'
+                if auto_invoice and not record.invoice_id:
+                    invoice = record._create_automatic_invoice()
+                    if invoice:
+                        msg = _("Facturation automatique: Facture %s créée.") % invoice.name
+                        record.message_post(body=msg)
+
+                # 5. Message de confirmation
+                msg = _(
+                    "Installation terminée par %s. Véhicule mis en attente de contrôle technique.") % self.env.user.name
                 record.message_post(body=msg)
-
-                # Find reservoir product from installation lines
-                reservoir_line = False
-
-                for line in record.installation_line_ids:
-                    if line.product_id.is_gpl_reservoir and line.serial_number:
-                        reservoir_line = line
-                        break
-
-                if reservoir_line:
-                    lot = self.env['stock.lot'].search([
-                        ('name', '=', reservoir_line.serial_number),
-                        ('product_id', '=', reservoir_line.product_id.id)
-                    ], limit=1)
-
-
-                    # Mettre à jour le véhicule avec le réservoir
-                    if record.vehicle_id:
-                        record.vehicle_id.write({
-                            'reservoir_lot_id': lot.id,
-                            'installation_id': record.id,
-                        })
-
-
-
-                    # Message de traçabilité
-                    vehicle_msg = _("Réservoir GPL (numéro de série: %s) installé via l'installation %s") % (
-                        lot.name, record.name)
-                    record.vehicle_id.message_post(body=vehicle_msg)
-
-                    # Create future control activity if we have certification date
-                    # if record.certification_date:
-                    #     record._create_reservoir_control_activity()
 
             except Exception as e:
                 raise UserError(_("Erreur lors de la finalisation de l'installation: %s") % str(e))
 
         return True
+
+    def _create_automatic_invoice(self):
+        """Crée automatiquement une facture quand l'option auto_invoice est activée"""
+        self.ensure_one()
+
+        if not self.client:
+            raise UserError(_("Aucun client lié à l'installation."))
+
+        if not self.installation_line_ids:
+            raise UserError(_("Aucun produit utilisé dans l'installation."))
+
+        try:
+            # Créer la facture
+            invoice_vals = {
+                'move_type': 'out_invoice',
+                'partner_id': self.client.id,
+                'invoice_date': fields.Date.today(),
+                'invoice_origin': self.name,
+                'invoice_line_ids': [],
+            }
+
+            # Ajouter les lignes de facture
+            for line in self.installation_line_ids:
+                if not line.product_id.categ_id.property_account_income_categ_id:
+                    raise UserError(_("Le produit %s n'a pas de compte de vente configuré.") % line.product_id.name)
+
+                line_vals = {
+                    'product_id': line.product_id.id,
+                    'quantity': line.product_uom_qty,
+                    'name': line.product_id.name,
+                    'price_unit': line.product_id.list_price,
+                    'account_id': line.product_id.categ_id.property_account_income_categ_id.id
+                }
+                invoice_vals['invoice_line_ids'].append((0, 0, line_vals))
+
+            # Créer la facture avec toutes les lignes en une seule opération
+            invoice = self.env['account.move'].create(invoice_vals)
+            invoice.action_post()  # Valider la facture directement
+
+            # Mettre à jour l'installation avec la référence à la facture
+            self.write({'invoice_id': invoice.id})
+
+            return invoice
+        except Exception as e:
+            _logger.error("Erreur lors de la création automatique de la facture: %s", str(e))
+            return False
 
     def action_view_installation_lines(self):
         self.ensure_one()
@@ -418,33 +627,6 @@ class GplService(models.Model):
                 'create': True
             }
         }
-
-    #
-    # def _create_reservoir_control_activity(self):
-    #     """Create an activity for reservoir control 3 months before expiry date"""
-    #     self.ensure_one()
-    #     if not self.expiry_date:
-    #         return
-    #
-    #     # Schedule activity 3 months before expiry
-    #     schedule_date = self.expiry_date - relativedelta(months=3)
-    #
-    #     # Check if activity type exists, or create a default one
-    #     ActivityType = self.env.ref('gpl_fleet.mail_activity_type_reservoir_control', raise_if_not_found=False)
-    #     if not ActivityType:
-    #         ActivityType = self.env['mail.activity.type'].search([('category', '=', 'default')], limit=1)
-    #
-    #     # Create the activity
-    #     self.env['mail.activity'].create({
-    #         'activity_type_id': ActivityType.id,
-    #         'res_id': self.vehicle_id.id,
-    #         'res_model_id': self.env['ir.model'].search([('model', '=', 'gpl.vehicle')], limit=1).id,
-    #         'summary': _('Contrôle GPL à planifier'),
-    #         'note': _('Le réservoir GPL nécessite un contrôle avant expiration le %s') %
-    #                 fields.Date.to_string(self.expiry_date),
-    #         'date_deadline': schedule_date,
-    #         'user_id': self.env.user.id,
-    #     })
 
     def action_invoice(self):
         self.ensure_one()

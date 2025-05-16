@@ -10,5 +10,7 @@ from . import gpl_vehicle_odometer
 from . import gpl_reservoir_fabriquant
 from . import gpl_service
 from . import gpl_repair
+from . import gpl_inspection
+from . import gpl_reservoir_testing
 from . import res_config_settings
 

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vue formulaire pour gpl.reservoir.testing -->
+    <record id="view_gpl_reservoir_testing_form" model="ir.ui.view">
+        <field name="name">gpl.reservoir.testing.form</field>
+        <field name="model">gpl.reservoir.testing</field>
+        <field name="arch" type="xml">
+            <form string="Réépreuve Réservoir GPL">
+                <header>
+                    <button name="action_schedule" string="Planifier" type="object"
+                            class="oe_highlight"
+                            modifiers="{'readonly': [('can_schedule', '=', False)]}"/>
+                    <button name="action_start" string="Démarrer" type="object"
+                            class="oe_highlight"
+                            modifiers="{'readonly': [('can_start', '=', False)]}"/>
+                    <button name="action_validate" string="Valider" type="object"
+                            class="oe_highlight"
+                            modifiers="{'readonly': [('can_validate', '=', False)]}"/>
+                    <button name="action_fail" string="Refuser" type="object"
+                            class="btn-danger"
+                            modifiers="{'readonly': [('can_fail', '=', False)]}"/>
+                    <button name="action_cancel" string="Annuler" type="object"
+                            modifiers="{'readonly': [('can_cancel', '=', False)]}"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,scheduled,in_progress,passed,failed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="vehicle_id" options="{'no_create': True}" readonly ="state != 'draft'"/>
+                            <field name="client_id" readonly="1"/>
+                            <field name="date_testing" readonly ="state in ['passed', 'failed', 'canceled']"/>
+                            <field name="technician_id" options="{'no_create': True}" readonly ="state in ['passed', 'failed', 'canceled']"/>
+                        </group>
+                        <group>
+                            <field name="reservoir_lot_id" options="{'no_create': True}" readonly="1"/>
+                            <field name="old_certification_number" readonly="1"/>
+                            <field name="old_certification_date" readonly="1"/>
+                            <field name="new_certification_number" required ="state == 'passed'" readonly ="state in ['passed', 'failed', 'canceled']"/>
+                            <field name="new_certification_date" required ="state == 'passed'" readonly ="state in ['passed', 'failed', 'canceled']"/>
+                            <field name="new_expiry_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notes et observations">
+                            <field name="notes" placeholder="Observations détaillées de la réépreuve du réservoir..."
+                                   readonly ="state in ['passed', 'failed', 'canceled']"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vue arbre pour gpl.reservoir.testing -->
+    <record id="view_gpl_reservoir_testing_tree" model="ir.ui.view">
+        <field name="name">gpl.reservoir.testing.tree</field>
+        <field name="model">gpl.reservoir.testing</field>
+        <field name="arch" type="xml">
+            <tree string="Réépreuves Réservoirs" decoration-info="state == 'draft'"
+                  decoration-primary="state == 'scheduled'" decoration-warning="state == 'in_progress'"
+                  decoration-success="state == 'passed'" decoration-danger="state == 'failed'">
+                <field name="name"/>
+                <field name="vehicle_id"/>
+                <field name="client_id"/>
+                <field name="date_testing"/>
+                <field name="technician_id"/>
+                <field name="new_certification_number"/>
+                <field name="new_certification_date"/>
+                <field name="new_expiry_date"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vue recherche pour gpl.reservoir.testing -->
+    <record id="view_gpl_reservoir_testing_search" model="ir.ui.view">
+        <field name="name">gpl.reservoir.testing.search</field>
+        <field name="model">gpl.reservoir.testing</field>
+        <field name="arch" type="xml">
+            <search string="Recherche Réépreuves Réservoirs">
+                <field name="name"/>
+                <field name="vehicle_id"/>
+                <field name="client_id"/>
+                <field name="technician_id"/>
+                <field name="new_certification_number"/>
+                <separator/>
+                <filter string="Brouillon" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Planifié" name="scheduled" domain="[('state', '=', 'scheduled')]"/>
+                <filter string="En cours" name="in_progress" domain="[('state', '=', 'in_progress')]"/>
+                <filter string="Validé" name="passed" domain="[('state', '=', 'passed')]"/>
+                <filter string="Refusé" name="failed" domain="[('state', '=', 'failed')]"/>
+                <group expand="1" string="Regrouper par">
+                    <filter string="Véhicule" name="vehicle" context="{'group_by': 'vehicle_id'}"/>
+                    <filter string="Client" name="client" context="{'group_by': 'client_id'}"/>
+                    <filter string="Technicien" name="technician" context="{'group_by': 'technician_id'}"/>
+                    <filter string="État" name="state" context="{'group_by': 'state'}"/>
+                    <filter string="Date" name="date" context="{'group_by': 'date_testing'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action pour gpl.reservoir.testing -->
+    <record id="action_gpl_reservoir_testing" model="ir.actions.act_window">
+        <field name="name">Réépreuves Réservoirs</field>
+        <field name="res_model">gpl.reservoir.testing</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Créer une nouvelle réépreuve de réservoir
+            </p>
+            <p>
+                Gérez les contrôles et réépreuves périodiques des réservoirs GPL.
+            </p>
+        </field>
+    </record>
+
+</odoo>
