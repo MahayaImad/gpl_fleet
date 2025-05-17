@@ -95,7 +95,7 @@
                             <field name="date_planned" readonly="1" invisible="date_planned == False"/>
                             <field name="date_completion" readonly="1" invisible="date_completion == False"/>
                             <field name="vehicle_id" required="1" options="{'no_create': True, 'no_open': False}"/>
-                            <field name="client" readonly="1"/>
+                            <field name="client_id" readonly="1"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="currency_id" invisible="1"/>
                         </group>
@@ -182,7 +182,7 @@
                        decoration-success="state == 'done'"
                        decoration-danger="state == 'cancel'"/>
                 <field name="name"/>
-                <field name="client"/>
+                <field name="client_id"/>
                 <field name="vehicle_id"/>
                 <field name="date_service"/>
                 <field name="technician_id"/>
@@ -200,7 +200,7 @@
         <field name="arch" type="xml">
             <search string="Recherche d'installations GPL">
                 <field name="name"/>
-                <field name="client"/>
+                <field name="client_id"/>
                 <field name="vehicle_id"/>
                 <field name="technician_id"/>
                 <field name="reservoir_lot_id"/>
@@ -218,7 +218,7 @@
                 <filter string="Ce jour" name="today"
                         domain="[('date_service', '=', context_today().strftime('%Y-%m-%d'))]"/>
                 <group expand="1" string="Regrouper par">
-                    <filter string="Client" name="client" context="{'group_by': 'client'}"/>
+                    <filter string="client_id" name="client" context="{'group_by': 'client_id'}"/>
                     <filter string="Véhicule" name="vehicle" context="{'group_by': 'vehicle_id'}"/>
                     <filter string="Technicien" name="technician" context="{'group_by': 'technician_id'}"/>
                     <filter string="État" name="state" context="{'group_by': 'state'}"/>
@@ -235,7 +235,7 @@
         <field name="arch" type="xml">
             <calendar string="Installations GPL" date_start="date_service" color="state" mode="month">
                 <field name="name"/>
-                <field name="client"/>
+                <field name="client_id"/>
                 <field name="vehicle_id"/>
                 <field name="technician_id"/>
             </calendar>
@@ -249,7 +249,7 @@
         <field name="arch" type="xml">
             <kanban default_group_by="state" records_draggable="0" class="o_kanban_small_column" sample="1">
                 <field name="name"/>
-                <field name="client"/>
+                <field name="client_id"/>
                 <field name="vehicle_id"/>
                 <field name="technician_id"/>
                 <field name="date_service"/>
@@ -275,7 +275,7 @@
                             <div class="o_kanban_record_body">
                                 <div>
                                     <strong>Client:</strong>
-                                    <t t-esc="record.client.value"/>
+                                    <t t-esc="record.client_id.value"/>
                                 </div>
                                 <div>
                                     <strong>Date:</strong>

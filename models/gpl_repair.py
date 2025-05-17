@@ -359,27 +359,152 @@ class GplRepairOrder(models.Model):
         is_return = (picking_type_code == 'in')
 
         # Rechercher le type d'opération approprié
+        # Première tentative avec le code exact
         picking_type = self.env['stock.picking.type'].search([
             ('code', '=', picking_type_code),
-            ('company_id', '=', self.env.company.id)
+            '|', ('company_id', '=', self.env.company.id), ('company_id', '=', False)
         ], limit=1)
+
+        # Si aucun type n'est trouvé, recherche plus générique
+        if not picking_type:
+            # Pour les livraisons
+            if picking_type_code == 'outgoing':
+                picking_type = self.env['stock.picking.type'].search([
+                    ('name', 'ilike', 'livraison'),
+                    '|', ('company_id', '=', self.env.company.id), ('company_id', '=', False)
+                ], limit=1)
+                if not picking_type:
+                    picking_type = self.env['stock.picking.type'].search([
+                        ('warehouse_id.partner_id', '=', self.env.company.partner_id.id),
+                        ('code', '=', 'outgoing')
+                    ], limit=1)
+            # Pour les réceptions
+            elif picking_type_code == 'in':
+                picking_type = self.env['stock.picking.type'].search([
+                    ('name', 'ilike', 'réception'),
+                    '|', ('company_id', '=', self.env.company.id), ('company_id', '=', False)
+                ], limit=1)
+                if not picking_type:
+                    picking_type = self.env['stock.picking.type'].search([
+                        ('warehouse_id.partner_id', '=', self.env.company.partner_id.id),
+                        ('code', '=', 'incoming')
+                    ], limit=1)
+
+        # Si toujours aucun type trouvé, créer un type d'opération par défaut
+        if not picking_type:
+            # Trouver un entrepôt pour créer les types d'opération
+            warehouse = self.env['stock.warehouse'].search([
+                '|', ('company_id', '=', self.env.company.id), ('company_id', '=', False)
+            ], limit=1)
+
+            if not warehouse:
+                raise UserError(_("Aucun entrepôt trouvé pour créer les types d'opération nécessaires."))
+
+            # Créer le type d'opération
+            if picking_type_code == 'outgoing':
+                # Trouver les emplacements nécessaires
+                location_id = self.env['stock.location'].search([
+                    ('usage', '=', 'internal'),
+                    '|', ('company_id', '=', self.env.company.id), ('company_id', '=', False)
+                ], limit=1)
+                location_dest_id = self.env['stock.location'].search([
+                    ('usage', '=', 'customer'),
+                    '|', ('company_id', '=', self.env.company.id), ('company_id', '=', False)
+                ], limit=1)
+
+                if not location_id or not location_dest_id:
+                    raise UserError(
+                        _("Impossible de trouver les emplacements nécessaires pour créer un type d'opération."))
+
+                # Créer le type d'opération de livraison
+                picking_type = self.env['stock.picking.type'].create({
+                    'name': 'Livraison GPL',
+                    'code': 'outgoing',
+                    'sequence_code': 'OUT',
+                    'default_location_src_id': location_id.id,
+                    'default_location_dest_id': location_dest_id.id,
+                    'sequence_id': self.env['ir.sequence'].create({
+                        'name': 'Séquence Livraison GPL',
+                        'code': 'stock.picking.out',
+                        'prefix': 'OUT/',
+                        'padding': 5,
+                    }).id,
+                    'warehouse_id': warehouse.id,
+                    'company_id': self.env.company.id,
+                })
+            else:  # 'in'
+                # Trouver les emplacements nécessaires pour un retour
+                location_id = self.env['stock.location'].search([
+                    ('usage', '=', 'customer'),
+                    '|', ('company_id', '=', self.env.company.id), ('company_id', '=', False)
+                ], limit=1)
+                location_dest_id = self.env['stock.location'].search([
+                    ('usage', '=', 'internal'),
+                    '|', ('company_id', '=', self.env.company.id), ('company_id', '=', False)
+                ], limit=1)
+
+                if not location_id or not location_dest_id:
+                    raise UserError(
+                        _("Impossible de trouver les emplacements nécessaires pour créer un type d'opération."))
+
+                # Créer le type d'opération de réception
+                picking_type = self.env['stock.picking.type'].create({
+                    'name': 'Réception GPL',
+                    'code': 'incoming',
+                    'sequence_code': 'IN',
+                    'default_location_src_id': location_id.id,
+                    'default_location_dest_id': location_dest_id.id,
+                    'sequence_id': self.env['ir.sequence'].create({
+                        'name': 'Séquence Réception GPL',
+                        'code': 'stock.picking.in',
+                        'prefix': 'IN/',
+                        'padding': 5,
+                    }).id,
+                    'warehouse_id': warehouse.id,
+                    'company_id': self.env.company.id,
+                })
 
         if not picking_type:
             type_name = 'réception' if is_return else 'livraison'
-            raise UserError(_("Aucun type d'opération de %s configuré.") % type_name)
+            raise UserError(
+                _("Aucun type d'opération de %s configuré. Veuillez créer un type d'opération avec le code %s.") % (
+                type_name, picking_type_code))
 
         # Déterminer les emplacements source et destination
         if is_return:
             # Pour un retour: Client -> Stock
-            location_src_id = picking_type.default_location_dest_id or self.env.ref('stock.stock_location_customers')
-            location_dest_id = picking_type.default_location_src_id or self.env.ref('stock.stock_location_stock')
+            location_src_id = picking_type.default_location_dest_id or self.env.ref('stock.stock_location_customers',
+                                                                                    raise_if_not_found=False)
+            location_dest_id = picking_type.default_location_src_id or self.env.ref('stock.stock_location_stock',
+                                                                                    raise_if_not_found=False)
         else:
             # Pour une livraison: Stock -> Client
-            location_src_id = picking_type.default_location_src_id or self.env.ref('stock.stock_location_stock')
-            location_dest_id = picking_type.default_location_dest_id or self.env.ref('stock.stock_location_customers')
+            location_src_id = picking_type.default_location_src_id or self.env.ref('stock.stock_location_stock',
+                                                                                   raise_if_not_found=False)
+            location_dest_id = picking_type.default_location_dest_id or self.env.ref('stock.stock_location_customers',
+                                                                                     raise_if_not_found=False)
 
-        if not location_src_id or not location_dest_id:
-            raise UserError(_("Impossible de déterminer les emplacements source et destination."))
+        # Créer des emplacements par défaut si nécessaire
+        if not location_src_id:
+            location_src_id = self.env['stock.location'].search([('usage', '=', 'internal')], limit=1)
+            if not location_src_id:
+                raise UserError(_("Aucun emplacement source disponible."))
+
+        if not location_dest_id:
+            if is_return:
+                location_dest_id = self.env['stock.location'].search([('usage', '=', 'internal')], limit=1)
+            else:
+                location_dest_id = self.env['stock.location'].search([('usage', '=', 'customer')], limit=1)
+                if not location_dest_id:
+                    # Créer un emplacement client par défaut si nécessaire
+                    location_dest_id = self.env['stock.location'].create({
+                        'name': 'Clients',
+                        'usage': 'customer',
+                        'company_id': self.env.company.id,
+                    })
+
+            if not location_dest_id:
+                raise UserError(_("Impossible de déterminer un emplacement de destination."))
 
         try:
             # Préparer les lignes de mouvements
@@ -499,14 +624,44 @@ class GplRepairOrder(models.Model):
                 validate_delivery = True
                 for move in repair.picking_id.move_ids.filtered(lambda m: m.state not in ['done', 'cancel']):
                     for move_line in move.move_line_ids:
-                        if hasattr(move_line, 'qty_done'):
-                            move_line.qty_done = move_line.product_uom_qty
+                        # Déterminer la quantité à traiter en fonction des champs disponibles
+                        # Cette partie a été modifiée pour gérer correctement Odoo 17
+                        reserved_qty = 0
+
+                        # Odoo 17+ : utiliser reserved_uom_qty ou product_uom_qty
+                        if hasattr(move_line, 'reserved_uom_qty'):
+                            reserved_qty = move_line.reserved_uom_qty
+                        elif hasattr(move_line, 'product_uom_qty'):
+                            reserved_qty = move_line.product_uom_qty
+                        elif hasattr(move, 'product_uom_qty'):
+                            reserved_qty = move.product_uom_qty
+                        elif hasattr(move, 'quantity'):
+                            reserved_qty = move.quantity
                         else:
-                            move_line.quantity = move_line.reserved_qty
+                            # Fallback : utiliser la quantité de la ligne de réparation
+                            repair_line = repair.repair_line_ids.filtered(
+                                lambda l: l.product_id.id == move.product_id.id and l.operation_type == 'add'
+                            )
+                            if repair_line:
+                                reserved_qty = repair_line[0].product_uom_qty
+                            else:
+                                reserved_qty = 1
+
+                        # Appliquer la quantité traitée
+                        if hasattr(move_line, 'qty_done'):
+                            move_line.qty_done = reserved_qty
+                        else:
+                            # Fallback pour les anciennes versions si nécessaire
+                            try:
+                                move_line.write({'qty_done': reserved_qty})
+                            except Exception as e:
+                                _logger.warning(f"Impossible de définir qty_done: {str(e)}")
+
                 try:
+                    # Valider le bon de livraison
                     repair.picking_id.button_validate()
                 except Exception as e:
-                    _logger.warning("Impossible de valider le bon de livraison: %s", str(e))
+                    _logger.warning(f"Impossible de valider le bon de livraison: {str(e)}")
                     # Ne pas bloquer le processus si la validation échoue
 
             # Vérifier et valider le bon de retour s'il existe
@@ -514,14 +669,39 @@ class GplRepairOrder(models.Model):
                 validate_return = True
                 for move in repair.return_picking_id.move_ids.filtered(lambda m: m.state not in ['done', 'cancel']):
                     for move_line in move.move_line_ids:
-                        if hasattr(move_line, 'qty_done'):
-                            move_line.qty_done = move_line.product_uom_qty
+                        # Même logique que pour les livraisons mais pour les retours
+                        reserved_qty = 0
+
+                        if hasattr(move_line, 'reserved_uom_qty'):
+                            reserved_qty = move_line.reserved_uom_qty
+                        elif hasattr(move_line, 'product_uom_qty'):
+                            reserved_qty = move_line.product_uom_qty
+                        elif hasattr(move, 'product_uom_qty'):
+                            reserved_qty = move.product_uom_qty
+                        elif hasattr(move, 'quantity'):
+                            reserved_qty = move.quantity
                         else:
-                            move_line.quantity = move_line.reserved_qty
+                            # Fallback : utiliser la quantité de la ligne de réparation
+                            repair_line = repair.repair_line_ids.filtered(
+                                lambda l: l.product_id.id == move.product_id.id and l.operation_type == 'remove'
+                            )
+                            if repair_line:
+                                reserved_qty = repair_line[0].product_uom_qty
+                            else:
+                                reserved_qty = 1
+
+                        if hasattr(move_line, 'qty_done'):
+                            move_line.qty_done = reserved_qty
+                        else:
+                            try:
+                                move_line.write({'qty_done': reserved_qty})
+                            except Exception as e:
+                                _logger.warning(f"Impossible de définir qty_done: {str(e)}")
+
                 try:
                     repair.return_picking_id.button_validate()
                 except Exception as e:
-                    _logger.warning("Impossible de valider le bon de retour: %s", str(e))
+                    _logger.warning(f"Impossible de valider le bon de retour: {str(e)}")
                     # Ne pas bloquer le processus si la validation échoue
 
             # Mettre à jour la réparation
@@ -622,21 +802,50 @@ class GplRepairOrder(models.Model):
 
             # Ajouter les lignes de facture (uniquement les produits ajoutés)
             for line in self.repair_line_ids.filtered(lambda l: l.operation_type == 'add'):
-                if not line.product_id.categ_id.property_account_income_categ_id:
-                    raise UserError(_("Le produit %s n'a pas de compte de vente configuré.") % line.product_id.name)
+                # Trouver le compte de revenu approprié
+                account = False
+
+                # 1. D'abord essayer le compte de revenu du produit
+                if line.product_id.property_account_income_id:
+                    account = line.product_id.property_account_income_id
+                # 2. Sinon, essayer le compte de revenu de la catégorie de produit
+                elif line.product_id.categ_id.property_account_income_categ_id:
+                    account = line.product_id.categ_id.property_account_income_categ_id
+                # 3. Si toujours pas de compte, récupérer le compte de revenu par défaut
+                else:
+                    account_journal = self.env['account.journal'].search(
+                        [('type', '=', 'sale'), ('company_id', '=', self.company_id.id)], limit=1)
+                    if account_journal and account_journal.default_account_id:
+                        account = account_journal.default_account_id
+                    else:
+                        # Chercher un compte de revenus générique
+                        account = self.env['account.account'].search([
+                            ('company_id', '=', self.company_id.id),
+                            ('account_type', '=', 'income')
+                        ], limit=1)
+
+                if not account:
+                    raise UserError(
+                        _("Impossible de déterminer un compte de revenus pour le produit %s.") % line.product_id.name)
 
                 line_vals = {
                     'product_id': line.product_id.id,
                     'quantity': line.product_uom_qty,
                     'name': f"{self.name}: {line.product_id.name}",
                     'price_unit': line.price_unit,
-                    'account_id': line.product_id.categ_id.property_account_income_categ_id.id
+                    'account_id': account.id
                 }
                 invoice_vals['invoice_line_ids'].append((0, 0, line_vals))
 
             # Créer la facture
             invoice = self.env['account.move'].create(invoice_vals)
-            invoice.action_post()  # Valider la facture
+
+            # Valider la facture
+            try:
+                invoice.action_post()  # Pour Odoo 13+
+            except Exception as e:
+                _logger.warning("Impossible de valider la facture: %s", str(e))
+                # Ne pas bloquer si la validation échoue
 
             # Lier la facture à la réparation
             self.write({'invoice_id': invoice.id})

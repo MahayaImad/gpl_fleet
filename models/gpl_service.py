@@ -34,7 +34,7 @@ class GplService(models.Model):
     date_completion = fields.Date(string="Date de finalisation")
 
     vehicle_id = fields.Many2one('gpl.vehicle', string="Vehicule")
-    client = fields.Many2one(related='vehicle_id.client_id', string="Client", store=True)
+    client_id = fields.Many2one(related='vehicle_id.client_id', string="Client", store=True)
     technician_id = fields.Many2one('hr.employee', string="Technicien")
 
     state = fields.Selection([
@@ -105,7 +105,7 @@ class GplService(models.Model):
 
         # Conserver le code existant - définir le client à partir du véhicule
         if self.vehicle_id and self.vehicle_id.client_id:
-            self.client = self.vehicle_id.client_id
+            self.client_id = self.vehicle_id.client_id
 
     def action_validate_preparation(self):
         for record in self:
@@ -153,7 +153,7 @@ class GplService(models.Model):
         if not self.installation_line_ids:
             return False
 
-        if not self.client:
+        if not self.client_id:
             raise UserError(_("Aucun client associé au véhicule. Veuillez définir un client."))
 
         picking_type = self.env['stock.picking.type'].search([('code', '=', 'outgoing')], limit=1)
@@ -180,7 +180,7 @@ class GplService(models.Model):
                 ], limit=1)
                 if not location_dest_id:
                     raise UserError(
-                        _("Aucun emplacement destination trouvé. Veuillez configurer un emplacement destination dans le type d'opération ou créer un emplacement 'Client'."))
+                        _("Aucun emplacement destination trouvé. Veuillez configurer un emplacement destination dans le type d'opération ou créer un emplacement 'client_id'."))
 
         try:
             move_vals = []
@@ -206,7 +206,7 @@ class GplService(models.Model):
 
             picking = self.env['stock.picking'].create({
                 'picking_type_id': picking_type.id,
-                'partner_id': self.client.id,
+                'partner_id': self.client_id.id,
                 'origin': self.name,
                 'location_id': location_src_id.id,
                 'location_dest_id': location_dest_id.id,
@@ -272,12 +272,12 @@ class GplService(models.Model):
         if not self.installation_line_ids:
             return False
 
-        if not self.client:
+        if not self.client_id:
             raise UserError(_("Aucun client associé au véhicule. Veuillez définir un client."))
 
         # Créer l'entête de la commande client
         so_vals = {
-            'partner_id': self.client.id,
+            'partner_id': self.client_id.id,
             'date_order': fields.Datetime.now(),
             'origin': self.name,
             'company_id': self.company_id.id,
@@ -334,11 +334,11 @@ class GplService(models.Model):
                 'target': 'new',
                 'context': {
                     'default_installation_id': self.id,
-                    'default_client_id': self.client.id if self.client else False,
+                    'default_client_id': self.client_id.id if self.client_id else False,
                 }
             }
 
-        if not self.client:
+        if not self.client_id:
             raise UserError(_("Aucun client associé au véhicule. Veuillez définir un client."))
 
         picking_type = self.env['stock.picking.type'].search([('code', '=', 'outgoing')], limit=1)
@@ -391,7 +391,7 @@ class GplService(models.Model):
 
             picking = self.env['stock.picking'].create({
                 'picking_type_id': picking_type.id,
-                'partner_id': self.client.id,
+                'partner_id': self.client_id.id,
                 'origin': self.name,
                 'location_id': location_src_id.id,
                 'location_dest_id': location_dest_id.id,
@@ -569,7 +569,7 @@ class GplService(models.Model):
         """Crée automatiquement une facture quand l'option auto_invoice est activée"""
         self.ensure_one()
 
-        if not self.client:
+        if not self.client_id:
             raise UserError(_("Aucun client lié à l'installation."))
 
         if not self.installation_line_ids:
@@ -579,7 +579,7 @@ class GplService(models.Model):
             # Créer la facture
             invoice_vals = {
                 'move_type': 'out_invoice',
-                'partner_id': self.client.id,
+                'partner_id': self.client_id.id,
                 'invoice_date': fields.Date.today(),
                 'invoice_origin': self.name,
                 'invoice_line_ids': [],
@@ -587,21 +587,50 @@ class GplService(models.Model):
 
             # Ajouter les lignes de facture
             for line in self.installation_line_ids:
-                if not line.product_id.categ_id.property_account_income_categ_id:
-                    raise UserError(_("Le produit %s n'a pas de compte de vente configuré.") % line.product_id.name)
+                # Trouver le compte de revenu approprié
+                account = False
+
+                # 1. D'abord essayer le compte de revenu du produit
+                if line.product_id.property_account_income_id:
+                    account = line.product_id.property_account_income_id
+                # 2. Sinon, essayer le compte de revenu de la catégorie de produit
+                elif line.product_id.categ_id.property_account_income_categ_id:
+                    account = line.product_id.categ_id.property_account_income_categ_id
+                # 3. Si toujours pas de compte, récupérer le compte de revenu par défaut
+                else:
+                    account_journal = self.env['account.journal'].search(
+                        [('type', '=', 'sale'), ('company_id', '=', self.company_id.id)], limit=1)
+                    if account_journal and account_journal.default_account_id:
+                        account = account_journal.default_account_id
+                    else:
+                        # Chercher un compte de revenus générique
+                        account = self.env['account.account'].search([
+                            ('company_id', '=', self.company_id.id),
+                            ('account_type', '=', 'income')
+                        ], limit=1)
+
+                if not account:
+                    raise UserError(
+                        _("Impossible de déterminer un compte de revenus pour le produit %s.") % line.product_id.name)
 
                 line_vals = {
                     'product_id': line.product_id.id,
                     'quantity': line.product_uom_qty,
-                    'name': line.product_id.name,
-                    'price_unit': line.product_id.list_price,
-                    'account_id': line.product_id.categ_id.property_account_income_categ_id.id
+                    'name': f"{self.name}: {line.product_id.name}",
+                    'price_unit': line.price_unit if line.price_unit > 0 else line.product_id.list_price,
+                    'account_id': account.id
                 }
                 invoice_vals['invoice_line_ids'].append((0, 0, line_vals))
 
             # Créer la facture avec toutes les lignes en une seule opération
             invoice = self.env['account.move'].create(invoice_vals)
-            invoice.action_post()  # Valider la facture directement
+
+            # Valider la facture
+            try:
+                invoice.action_post()  # Pour Odoo 13+
+            except Exception as e:
+                _logger.warning("Impossible de valider la facture: %s", str(e))
+                # Ne pas bloquer si la validation échoue
 
             # Mettre à jour l'installation avec la référence à la facture
             self.write({'invoice_id': invoice.id})
@@ -634,7 +663,7 @@ class GplService(models.Model):
         if self.state != 'done':
             raise UserError(_("L'installation doit être terminée avant de pouvoir facturer."))
 
-        if not self.client:
+        if not self.client_id:
             raise UserError(_("Aucun client lié à l'installation."))
 
         if not self.installation_line_ids:
@@ -644,34 +673,10 @@ class GplService(models.Model):
             raise UserError(_("Une facture existe déjà pour cette installation."))
 
         try:
-            # Créer la facture
-            invoice_vals = {
-                'move_type': 'out_invoice',
-                'partner_id': self.client.id,
-                'invoice_date': fields.Date.today(),
-                'invoice_origin': self.name,
-                'invoice_line_ids': [],
-            }
+            invoice = self._create_automatic_invoice()
 
-            # Ajouter les lignes de facture
-            for line in self.installation_line_ids:
-                if not line.product_id.categ_id.property_account_income_categ_id:
-                    raise UserError(_("Le produit %s n'a pas de compte de vente configuré.") % line.product_id.name)
-
-                line_vals = {
-                    'product_id': line.product_id.id,
-                    'quantity': line.product_uom_qty,
-                    'name': line.product_id.name,
-                    'price_unit': line.product_id.list_price,
-                    'account_id': line.product_id.categ_id.property_account_income_categ_id.id
-                }
-                invoice_vals['invoice_line_ids'].append((0, 0, line_vals))
-
-            # Créer la facture avec toutes les lignes en une seule opération
-            invoice = self.env['account.move'].create(invoice_vals)
-            invoice.action_post()
-
-            self.write({'invoice_id': invoice.id})
+            if not invoice:
+                raise UserError(_("Impossible de créer la facture. Vérifiez la configuration des comptes."))
 
             msg = _("Facture créée : %s") % invoice.name
             self.message_post(body=msg)
@@ -728,7 +733,7 @@ class GplService(models.Model):
             'target': 'new',
             'context': {
                 'default_installation_id': self.id,
-                'default_client_id': self.client.id if self.client else False,
+                'default_client_id': self.client_id.id if self.client_id else False,
 
             }
         }
