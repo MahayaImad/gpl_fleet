@@ -51,8 +51,8 @@ class GplService(models.Model):
     notes = fields.Text(string="Notes")
 
     # Statistiques pour le dashboard
-    products_count = fields.Integer(string="Nombre de produits", compute="_compute_products_count")
-    total_amount = fields.Float(string="Montant total", compute="_compute_total_amount")
+    products_count = fields.Integer(string="Nombre de produits", compute="_compute_products_count", store=True)
+    total_amount = fields.Float(string="Montant total", compute="_compute_total_amount", store=True)
     company_id = fields.Many2one('res.company', string='Company',
                                  default=lambda self: self.env.company)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
@@ -83,18 +83,23 @@ class GplService(models.Model):
                 total += line.product_id.list_price * line.product_uom_qty
             record.total_amount = total
 
-    @api.model
-    def create(self, vals):
-        if isinstance(vals, dict) and vals.get('name', 'New') == 'New':
-            vals['name'] = self.env['ir.sequence'].next_by_code('gpl.service.installation') or 'New'
+    @api.model_create_multi
+    def create(self, vals_list):
+        """
+        Create method updated for Odoo 17 compatibility.
+        Handles batch creation with vals_list parameter.
+        """
+        for vals in vals_list:
+            if isinstance(vals, dict) and vals.get('name', 'New') == 'New':
+                vals['name'] = self.env['ir.sequence'].next_by_code('gpl.service.installation') or 'New'
 
-        # Si le véhicule contient un réservoir, l'assigner dès la création
-        if vals.get('vehicle_id'):
-            vehicle = self.env['gpl.vehicle'].browse(vals['vehicle_id'])
-            if vehicle and vehicle.reservoir_lot_id:
-                vals['reservoir_lot_id'] = vehicle.reservoir_lot_id.id
+            # If the véhicule contains a reservoir, assign it at creation
+            if vals.get('vehicle_id'):
+                vehicle = self.env['gpl.vehicle'].browse(vals['vehicle_id'])
+                if vehicle and vehicle.reservoir_lot_id:
+                    vals['reservoir_lot_id'] = vehicle.reservoir_lot_id.id
 
-        return super().create(vals)
+        return super().create(vals_list)
 
     @api.onchange('vehicle_id')
     def onchange_vehicle_id(self):

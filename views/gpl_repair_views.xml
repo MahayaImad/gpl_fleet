@@ -67,12 +67,7 @@
                             class="btn btn-secondary"
                             invisible = "state == 'draft'"/>
 
-                    <!-- Bouton d'impression - toujours disponible sauf en brouillon -->
-                    <button name="print_repair_order"
-                            string="Imprimer"
-                            type="object"
-                            class="btn btn-secondary"
-                            invisible = "state == 'draft'"/>
+        
 
                     <!-- Statusbar avec progression visuelle claire -->
                     <field name="state" widget="statusbar"

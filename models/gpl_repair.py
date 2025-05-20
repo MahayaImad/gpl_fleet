@@ -199,11 +199,23 @@ class GplRepairOrder(models.Model):
                 # Les produits retournés ne sont pas comptés dans le total
             record.total_amount = total
 
-    @api.model
-    def create(self, vals):
-        if vals.get('name', 'Nouveau') == 'Nouveau':
-            vals['name'] = self.env['ir.sequence'].next_by_code('gpl.repair.order') or 'Nouveau'
-        return super(GplRepairOrder, self).create(vals)
+    @api.model_create_multi
+    def create(self, vals_list):
+        """
+        Create method updated for Odoo 17 compatibility.
+        Handles batch creation with vals_list parameter.
+        """
+        for vals in vals_list:
+            if isinstance(vals, dict) and vals.get('name', 'New') == 'New':
+                vals['name'] = self.env['ir.sequence'].next_by_code('gpl.service.installation') or 'New'
+
+            # If the véhicule contains a reservoir, assign it at creation
+            if vals.get('vehicle_id'):
+                vehicle = self.env['gpl.vehicle'].browse(vals['vehicle_id'])
+                if vehicle and vehicle.reservoir_lot_id:
+                    vals['reservoir_lot_id'] = vehicle.reservoir_lot_id.id
+
+        return super().create(vals_list)
 
     @api.onchange('vehicle_id')
     def onchange_vehicle_id(self):

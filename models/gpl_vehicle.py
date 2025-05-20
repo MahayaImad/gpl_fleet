@@ -129,7 +129,7 @@ class GplVehicle(models.Model):
     )
 
     repair_order_id = fields.Many2one(
-        'repair.order',
+        'gpl.repair.order',
         string='Réparation en cours',
         readonly=True,
         help="Réparation actuelle pour ce véhicule"

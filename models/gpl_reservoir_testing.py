@@ -58,11 +58,16 @@ class GplReservoirTesting(models.Model):
             else:
                 record.new_expiry_date = False
 
-    @api.model
-    def create(self, vals):
-        if vals.get('name', 'New') == 'New':
-            vals['name'] = self.env['ir.sequence'].next_by_code('gpl.reservoir.testing') or 'New'
-        return super(GplReservoirTesting, self).create(vals)
+    @api.model_create_multi
+    def create(self, vals_list):
+        """
+        Create method updated for Odoo 17 compatibility.
+        Handles batch creation with vals_list parameter.
+        """
+        for vals in vals_list:
+            if vals.get('name', 'New') == 'New':
+                vals['name'] = self.env['ir.sequence'].next_by_code('gpl.reservoir.testing') or 'New'
+        return super(GplReservoirTesting, self).create(vals_list)
 
     def action_schedule(self):
         self.write({'state': 'scheduled'})
