@@ -7,44 +7,57 @@
         <field name="arch" type="xml">
             <form string="Installation GPL">
                 <header>
-                    <!-- Boutons d'action selon les étapes du flux-->
+                    <!-- Indicateur pour le flux simplifié -->
+                    <field name="use_simplified_flow" invisible="1"/>
+
+                    <!-- ÉTAPE 1: PRÉPARATION → PLANIFIÉ -->
                     <button name="action_validate_preparation"
                             string="Valider préparation"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'draft'"/>
+                            invisible= "state != 'draft'"/>
 
+                    <!-- ÉTAPE 2: PLANIFIÉ → EN COURS (Flux standard uniquement) -->
                     <button name="action_create_picking"
                             string="Créer bon de livraison"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'planned'"/>
+                            invisible ="state != 'planned' or use_simplified_flow == True"/>
 
+                    <!-- ÉTAPE 3: EN COURS → TERMINÉ -->
                     <button name="action_complete_installation"
                             string="Terminer installation"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'in_progress'"/>
+                            invisible = "state != 'in_progress'"/>
 
+                    <!-- ÉTAPE 4: FACTURATION (uniquement si terminé et pas de facture) -->
                     <button name="action_invoice"
                             string="Créer facture"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'done' or invoice_id"/>
+                            invisible = "state != 'done' or invoice_id != False"/>
 
+                    <!-- BOUTONS SECONDAIRES -->
                     <button name="action_cancel"
                             string="Annuler"
                             type="object"
-                            invisible="state == 'cancel'"/>
+                            class="btn btn-secondary"
+                            invisible ="state == 'cancel'"/>
 
                     <button name="action_draft"
                             string="Remettre en préparation"
                             type="object"
-                            invisible="state == 'draft'"/>
+                            class="btn btn-secondary"
+                            invisible = "state == 'draft' or picking_id.state == 'done' or invoice_id != False"/>
 
+                    <div class="badge text-bg-info" invisible="use_simplified_flow == False">
+                        Mode simplifié
+                    </div>
+
+                    <!-- Champ d'état avec une progression visuelle claire -->
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,planned,in_progress,done"/>
-
                 </header>
 
                 <sheet>
@@ -59,13 +72,13 @@
                             </div>
                         </button>
 
-                            <button name="action_view_sale_order"
-                                    type="object"
-                                    class="oe_stat_button"
-                                    icon="fa-shopping-cart"
-                                    invisible="sale_order_id == False">
-                                <span class="o_stat_text">Bon de commande client</span>
-                            </button>
+                        <button name="action_view_sale_order"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-shopping-cart"
+                                invisible="sale_order_id == False">
+                            <span class="o_stat_text">Bon de commande client</span>
+                        </button>
 
                         <button name="action_view_picking"
                                 type="object"
@@ -81,6 +94,7 @@
                                 invisible="invoice_id == False">
                             <span class="o_stat_text">Facture</span>
                         </button>
+
                     </div>
 
                     <div class="oe_title">
@@ -141,31 +155,59 @@
                         </page>
                     </notebook>
 
-                    <div id="info_1" class="alert alert-info" role="status" invisible="state != 'draft'">
-                        <strong>Étape 1 :</strong>
-                        <strong>Comment utiliser:</strong> Ajoutez les produits nécessaires pour cette installation.
-                            Une fois la préparation validée, un bon de commande client sera automatiquement créé.
+
+                    <div id="info_1"  class="alert alert-info" role="status" invisible = "state != 'draft'">
+                        <strong>Étape 1/4 : Préparation</strong><br/>
+                        <div invisible="use_simplified_flow == False">
+                            <i class="fa fa-info-circle" title=" "/> <b>Mode simplifié activé:</b>
+                            Ajoutez les produits nécessaires puis validez la préparation pour créer automatiquement
+                            un bon de commande client et un bon de livraison.
+                        </div>
+                        <div invisible="use_simplified_flow == True">
+                            <i class="fa fa-info-circle" title=" "/> Ajoutez les produits nécessaires puis validez la préparation
+                            pour créer un bon de commande client.
+                        </div>
                     </div>
-                    <div id="info_2" class="alert alert-primary" role="status" invisible="state != 'planned'">
-                        <strong>Étape 2 :</strong>
-                        Créez le bon de livraison pour réserver les produits nécessaires à l'installation.
+                    <div id="info_2" class="alert alert-primary" role="status"  invisible ="state != 'planned'">
+                        <strong>Étape 2/4 : Planification</strong><br/>
+                        <i class="fa fa-info-circle" title=" "/> Créez le bon de livraison pour réserver les produits nécessaires
+                        à l'installation et passer à l'étape suivante.
                     </div>
-                    <div id="info_3" class="alert alert-warning" role="status" invisible="state != 'in_progress'">
-                        <strong>Étape 3 :</strong>
-                        L'installation est en cours. Cliquez sur "Terminer installation" une fois complétée.
+
+                    <div id="info_3" class="alert alert-warning" role="status" invisible ="state != 'in_progress'">
+                        <strong>Étape 3/4 : Installation en cours</strong><br/>
+                        <i class="fa fa-info-circle" title=" "/> L'installation est en cours. Une fois les travaux terminés,
+                        cliquez sur "Terminer installation" pour finaliser le processus.
                     </div>
-                    <div id="info_4" class="alert alert-success" role="status" invisible="state != 'done'">
-                        <strong>Installation terminée !</strong>
-                        Vous pouvez maintenant créer la facture client.
+
+                    <div id="info_4" class="alert alert-success" role="status" invisible = "state != 'done'">
+                        <strong>Étape 4/4 : Installation terminée</strong><br/>
+                        <i class="fa fa-check-circle" title=""/>
+                        <span invisible ="invoice_id != False">
+                            <span invisible="use_simplified_flow == False">
+                                La facture sera créée automatiquement lors de la facturation périodique.
+                            </span>
+                            <span invisible="use_simplified_flow == True">
+                                Vous pouvez maintenant créer la facture client en cliquant sur "Créer facture".
+                            </span>
+                        </span>
+                        <span invisible ="invoice_id == False">
+                            La facture a été créée et est disponible dans l'onglet "Facture".
+                        </span>
                     </div>
-                    <div id="info_5" class="alert alert-danger" role="status" invisible="state != 'cancel'">
-                        <strong>Installation annulée.</strong>
-                        Vous pouvez la remettre en brouillon si nécessaire.
+
+                    <div id="info_5" class="alert alert-danger" role="status"  invisible = "state != 'cancel'">
+                        <strong>Installation annulée</strong><br/>
+                        <i class="fa fa-info-circle" title=" "/> Cette installation a été annulée et n'est plus active.
+                        Vous pouvez la remettre en brouillon si nécessaire en utilisant le bouton "Remettre en préparation".
                     </div>
+
                 </sheet>
 
-                <!-- Chatter (historique des modifications) -->
-                <chatter/>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
             </form>
         </field>
     </record>
@@ -383,62 +425,5 @@
         </field>
     </record>
 
-    <record id="view_form_gpl_service_installation_simplified" model="ir.ui.view">
-        <field name="name">gpl.service.installation.form.simplified</field>
-        <field name="model">gpl.service.installation</field>
-        <field name="inherit_id" ref="gpl_fleet.view_form_gpl_service_installation"/>
-        <field name="arch" type="xml">
-            <!-- Ajouter un indicateur de flux simplifié dans l'en-tête -->
-            <xpath expr="//header" position="inside">
-                <field name="use_simplified_flow" invisible="1"/>
-                <div class="badge text-bg-info" invisible="use_simplified_flow == False">
-                    Mode simplifié
-                </div>
-            </xpath>
-
-
-
-            <xpath expr="//button[@name='action_create_picking']" position="attributes">
-                <attribute name="invisible" invisible="state != 'planned' and use_simplified_flow == True"/>
-            </xpath>
-
-            <!-- Adapter les messages d'aide selon le mode -->
-            <xpath expr="//div[@id='info_1']" position="replace">
-                <div class="alert alert-info" role="status" invisible="state != 'draft'">
-                    <strong>Étape 1 :</strong>
-                    <div invisible="use_simplified_flow == False">
-                        <strong>Mode simplifié activé:</strong>
-                        Ajoutez les produits nécessaires pour cette installation.
-                        Une fois la préparation validée, un bon de commande client et un bon de livraison seront automatiquement créés.
-                    </div>
-                    <div invisible="use_simplified_flow == True">
-                        <strong>Comment utiliser:</strong> Ajoutez les produits nécessaires pour cette installation.
-                        Une fois la préparation validée, un bon de commande client sera automatiquement créé.
-                    </div>
-                </div>
-            </xpath>
-
-            <xpath expr="//div[@id='info_2']" position="attributes">
-                <attribute name="invisible" invisible="state != 'planned' and use_simplified_flow == True"/>
-            </xpath>
-
-            <xpath expr="//div[@id='info_4']" position="replace">
-                <div class="alert alert-success" role="status" invisible="state != 'done'">
-                    <strong>Installation terminée !</strong>
-                    <span invisible="invoice_id == False">
-                        <span invisible="use_simplified_flow == False">
-                            La facture sera créée automatiquement.
-                        </span>
-                        <span invisible="use_simplified_flow == True">
-                            Vous pouvez maintenant créer la facture client.
-                        </span>
-                    </span>
-                    <span invisible="invoice_id == False">
-                        La facture a été créée.
-                    </span>
-                </div>
-            </xpath>
-        </field>
-    </record>
 
 </odoo>

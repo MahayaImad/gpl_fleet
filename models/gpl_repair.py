@@ -969,21 +969,6 @@ class GplRepairOrder(models.Model):
             'context': {'default_repair_id': self.id},
         }
 
-    def action_add_products(self):
-        """Ouvre l'assistant pour ajouter des produits"""
-        self.ensure_one()
-
-        return {
-            'name': _('Ajouter des produits'),
-            'type': 'ir.actions.act_window',
-            'view_mode': 'form',
-            'res_model': 'gpl.repair.add.products',
-            'target': 'new',
-            'context': {
-                'default_repair_id': self.id,
-                'default_client_id': self.client_id.id if self.client_id else False,
-            }
-        }
 
     def print_repair_order(self):
         """Imprime l'ordre de réparation"""

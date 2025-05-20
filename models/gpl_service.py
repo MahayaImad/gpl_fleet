@@ -769,9 +769,6 @@ class GplService(models.Model):
             'context': {'create': False}
         }
 
-
-
-
 class GplInstallationLine(models.Model):
     _name = 'gpl.installation.line'
     _description = "Lignes de produits utilisés pour l'installation"
@@ -945,8 +942,6 @@ class GplInstallationAddProducts(models.TransientModel):
             res['installation_id'] = self.env.context.get('active_id')
         return res
 
-
-# Ajout dans models/gpl_service.py
 
 class GplInstallationProductLine(models.Model):
     _name = 'gpl.installation.product.line'

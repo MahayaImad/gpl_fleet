@@ -7,62 +7,74 @@
         <field name="arch" type="xml">
             <form string="Réparation GPL">
                 <header>
-                    <!-- Boutons d'action selon les étapes du flux -->
+                    <!-- Champs invisibles pour contrôler l'affichage des boutons -->
                     <field name="has_deliverable_products" invisible="1"/>
                     <field name="has_returnable_products" invisible="1"/>
                     <field name="invoice_id" invisible="1"/>
+                    <field name="use_simplified_flow" invisible="1"/>
 
+                    <!-- ÉTAPE 1: BROUILLON → PLANIFIÉ -->
                     <button name="action_schedule"
                             string="Planifier"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'draft'"/>
+                            invisible ="state != 'draft'"/>
 
+                    <!-- ÉTAPE 2: PLANIFIÉ → PRÉPARATION -->
                     <button name="action_prepare_products"
                             string="Préparer produits"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'scheduled'"/>
+                            invisible ="state != 'scheduled'"/>
 
+                    <!-- ÉTAPE 3A: PRÉPARATION → CRÉER BON DE LIVRAISON (si produits à livrer) -->
                     <button name="action_create_picking"
                             string="Créer bon de livraison"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'preparation' or has_deliverable_products == False"/>
+                            invisible = "state != 'preparation' or has_deliverable_products == False"/>
 
+                    <!-- ÉTAPE 3B: PRÉPARATION → CRÉER BON DE RETOUR (si produits à retourner) -->
                     <button name="action_create_return_picking"
                             string="Créer bon de retour"
                             type="object"
-                            class="oe_highlight"
-                            invisible="state != 'preparation' or has_returnable_products == False"/>
+                            invisible = "state != 'preparation' or has_returnable_products == False"/>
 
+                    <!-- ÉTAPE 4: EN COURS → TERMINÉ -->
                     <button name="action_complete_repair"
                             string="Terminer réparation"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'in_progress'"/>
+                            invisible = "state != 'in_progress'"/>
 
+                    <!-- ÉTAPE 5: FACTURATION (uniquement si terminé et pas de facture) -->
                     <button name="action_invoice"
                             string="Créer facture"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'done' or invoice_id"/>
+                            invisible = "state != 'done' or invoice_id != False"/>
 
+                    <!-- BOUTONS SECONDAIRES -->
                     <button name="action_cancel"
                             string="Annuler"
                             type="object"
-                            invisible="state == 'cancel'"/>
+                            class="btn btn-secondary"
+                            invisible = "state == 'cancel'"/>
 
                     <button name="action_draft"
                             string="Remettre en brouillon"
                             type="object"
-                            invisible="state == 'draft'"/>
+                            class="btn btn-secondary"
+                            invisible = "state == 'draft'"/>
 
+                    <!-- Bouton d'impression - toujours disponible sauf en brouillon -->
                     <button name="print_repair_order"
                             string="Imprimer"
                             type="object"
+                            class="btn btn-secondary"
                             invisible = "state == 'draft'"/>
 
+                    <!-- Statusbar avec progression visuelle claire -->
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,scheduled,preparation,in_progress,done"/>
                 </header>
@@ -165,11 +177,7 @@
                                 <field name="total_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                             </group>
                             <div class="oe_clear"/>
-                            <button name="action_add_products"
-                                    string="Ajouter produits"
-                                    type="object"
-                                    class="btn-primary"
-                                    invisible = "state not in ['draft', 'scheduled', 'preparation']"/>
+
                         </page>
 
                         <page string="Diagnostic" invisible = "repair_type == False">
@@ -182,41 +190,59 @@
                     </notebook>
 
                     <!-- Messages d'aide -->
+
                     <div id="info_1" class="alert alert-info" role="status" invisible="state != 'draft'">
-                        <strong>Étape 1 :</strong>
-                        Complétez les informations et ajoutez les produits nécessaires pour cette réparation.
+                        <strong>Étape 1/5 : Préparation</strong><br/>
+                        <i class="fa fa-info-circle"/> Complétez les informations et ajoutez les produits nécessaires pour cette réparation.
                         Cliquez sur "Planifier" une fois terminé.
                     </div>
 
                     <div id="info_2" class="alert alert-primary" role="status" invisible="state != 'scheduled'">
-                        <strong>Étape 2 :</strong>
-                        La réparation est planifiée. Vérifiez les produits et services nécessaires, puis cliquez sur "Préparer produits".
+                        <strong>Étape 2/5 : Planification</strong><br/>
+                        <i class="fa fa-info-circle"/> La réparation est planifiée. Vérifiez les produits et services nécessaires,
+                        puis cliquez sur "Préparer produits".
                         <div invisible="use_simplified_flow == False">
-                            <strong>Mode simplifié activé :</strong> Le bon de commande et le bon de livraison seront créés automatiquement.
+                            <br/><strong>Mode simplifié activé:</strong> Le bon de commande et le bon de livraison seront créés automatiquement.
                         </div>
                     </div>
 
-                    <div id="info_3" class="alert alert-primary" role="status" invisible="state != 'preparation'">
-                        <strong>Étape 3 :</strong>
-                        Créez les bons de livraison et/ou de retour pour les produits de la réparation.
+                     <div id="info_3" class="alert alert-primary" role="status" invisible="state != 'preparation'">
+                        <strong>Étape 3/5 : Gestion des stocks</strong><br/>
+                        <i class="fa fa-info-circle"/> Créez les bons de livraison et/ou de retour pour les produits de la réparation:
+                        <ul>
+                            <li invisible = "has_deliverable_products ==False">
+                                <i class="fa fa-truck"/> Pour les <b>nouveaux produits</b>, créez un <b>bon de livraison</b>
+                            </li>
+                            <li invisible = "has_returnable_products == False">
+                                <i class="fa fa-truck fa-flip-horizontal"/> Pour les <b>pièces remplacées</b>, créez un <b>bon de retour</b>
+                            </li>
+                        </ul>
                     </div>
+
 
                     <div id="info_4" class="alert alert-warning" role="status" invisible="state != 'in_progress'">
-                        <strong>Étape 4 :</strong>
-                        La réparation est en cours. Cliquez sur "Terminer réparation" une fois complétée.
+                        <strong>Étape 4/5 : Réparation en cours</strong><br/>
+                        <i class="fa fa-info-circle"/> La réparation est en cours. Une fois les travaux terminés,
+                        cliquez sur "Terminer réparation".
                     </div>
 
-                    <div id="info_5" class="alert alert-success" role="status" invisible="state != 'done'">
-                        <strong>Réparation terminée !</strong>
-                        <span invisible="invoice_id">
-                            Vous pouvez maintenant créer la facture client.
+                    <div id="info_5" class="alert alert-success" role="status"  invisible="state != 'done'">
+                        <strong>Étape 5/5 : Réparation terminée</strong><br/>
+                        <i class="fa fa-check-circle"/>
+                        <span invisible = "invoice_id != False">
+                            Vous pouvez maintenant créer la facture client en cliquant sur "Créer facture".
+                        </span>
+                        <span invisible = "invoice_id == False">
+                            La facture a été créée et est disponible dans l'onglet "Facture".
                         </span>
                     </div>
 
                     <div id="info_6" class="alert alert-danger" role="status" invisible="state != 'cancel'">
-                        <strong>Réparation annulée.</strong>
+                        <strong>Réparation annulée</strong><br/>
+                        <i class="fa fa-info-circle"/> Cette réparation a été annulée.
                         Vous pouvez la remettre en brouillon si nécessaire.
                     </div>
+
                 </sheet>
 
                 <!-- Chatter (historique des modifications) -->
@@ -406,13 +432,13 @@
                 <field name="operation_type" widget="selection"/>
                 <field name="product_uom_qty"/>
                 <field name="lot_id" domain="[('id', 'in', available_lot_ids)]" options="{'no_create': True}"/>
-                <field name="is_gpl_reservoir" invisible="1"/>
+                <field name="is_gpl_reservoir" column_invisible="1"/>
                 <field name="qty_available" widget="badge"
                        decoration-danger="qty_available &lt; product_uom_qty"
                        decoration-success="qty_available &gt;= product_uom_qty"/>
                 <field name="price_unit"/>
                 <field name="price_subtotal" sum="Total"/>
-                <field name="available_lot_ids" invisible="1"/>
+                <field name="available_lot_ids" column_invisible="1"/>
             </tree>
         </field>
     </record>
