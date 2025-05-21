@@ -42,6 +42,14 @@ class GplVehicle(models.Model):
         help='Numéro unique inscrit sur le moteur du véhicule (numéro de châssis / VIN)',
         copy=False
     )
+
+    vehicle_type_code = fields.Char(
+        string="Type de véhicule",
+        compute="_compute_vehicle_type_code",
+        store=True,
+        readonly=False,
+        help="Code de type du véhicule (par défaut: caractères 3 à 8 du VIN)"
+    )
     acquisition_date = fields.Date(
         "Date d'immatriculation",
         required=False,
@@ -167,8 +175,45 @@ class GplVehicle(models.Model):
                 ('vehicle_id', '=', record.id)
             ])
 
+    @api.depends('vin_sn')
+    def _compute_vehicle_type_code(self):
+        """Extrait les caractères 3 à 8 du VIN quand le champ est vide"""
+        for vehicle in self:
+            # Ne pas écraser une valeur déjà définie manuellement
+            if not vehicle.vehicle_type_code and vehicle.vin_sn and len(vehicle.vin_sn) >= 8:
+                vehicle.vehicle_type_code = vehicle.vin_sn[3:8]
+            elif not vehicle.vehicle_type_code:
+                vehicle.vehicle_type_code = False
+
+    # Méthode pour réinitialiser le code type selon le VIN
+    def action_reset_vehicle_type_code(self):
+        """Réinitialise le code type basé sur le VIN"""
+        for vehicle in self:
+            if vehicle.vin_sn and len(vehicle.vin_sn) >= 8:
+                vehicle.vehicle_type_code = vehicle.vin_sn[3:8]
+
+    # Méthode onchange pour suggérer le type lors de la saisie du VIN
+    @api.onchange('vin_sn')
+    def _onchange_vin_sn(self):
+        if self.vin_sn and len(self.vin_sn) >= 8 and not self.vehicle_type_code:
+            self.vehicle_type_code = self.vin_sn[3:8]
     def action_view_installations(self):
         self.ensure_one()
+
+        installations = self.env['gpl.service.installation'].search([('vehicle_id', '=', self.id)])
+        installation_count = len(installations)
+
+        # Si une seule installation existe, l'ouvrir directement
+        if installation_count == 1:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': 'Installation GPL',
+                'res_model': 'gpl.service.installation',
+                'view_mode': 'form',
+                'res_id': installations.id,  # ID de l'installation unique
+                'target': 'current',
+                'context': {'default_vehicle_id': self.id}
+            }
         return {
             'type': 'ir.actions.act_window',
             'name': 'Installations GPL',

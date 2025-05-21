@@ -35,8 +35,15 @@ class GplService(models.Model):
 
     vehicle_id = fields.Many2one('gpl.vehicle', string="Vehicule")
     client_id = fields.Many2one(related='vehicle_id.client_id', string="Client", store=True)
-    technician_id = fields.Many2one('hr.employee', string="Technicien")
-
+    technician_ids = fields.Many2many(
+        'hr.employee',
+        'gpl_installation_technician_rel',
+        'installation_id',
+        'employee_id',
+        string="Techniciens",
+        required=True,
+        help="Équipe de techniciens assignée à cette installation"
+    )
     state = fields.Selection([
         ('draft', 'Préparation'),
         ('planned', 'Planifié'),
@@ -58,6 +65,12 @@ class GplService(models.Model):
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
 
     sale_order_id = fields.Many2one('sale.order', string="Bon de commande client", copy=False)
+
+    etancheite_pressure = fields.Float(
+        string="Pression test étanchéité (bars)",
+        default=10.0,
+        help="Pression utilisée pour le test d'étanchéité du système GPL"
+    )
 
     # Nouveau champ pour indiquer si le flux simplifié est utilisé
     use_simplified_flow = fields.Boolean(string="Flux simplifié", compute='_compute_use_simplified_flow')
@@ -83,17 +96,34 @@ class GplService(models.Model):
                 total += line.product_id.list_price * line.product_uom_qty
             record.total_amount = total
 
+
     @api.model_create_multi
     def create(self, vals_list):
-        """
-        Create method updated for Odoo 17 compatibility.
-        Handles batch creation with vals_list parameter.
-        """
         for vals in vals_list:
             if isinstance(vals, dict) and vals.get('name', 'New') == 'New':
                 vals['name'] = self.env['ir.sequence'].next_by_code('gpl.service.installation') or 'New'
 
-            # If the véhicule contains a reservoir, assign it at creation
+            # Utiliser les techniciens par défaut si configurés et non spécifiés
+            if isinstance(vals, dict) and not vals.get('technician_ids'):
+                # Vérifier si l'option est activée
+                use_default_technician = self.env['ir.config_parameter'].sudo().get_param(
+                    'gpl_fleet.use_default_technician', 'False').lower() == 'true'
+
+                if use_default_technician:
+                    # Récupérer les IDs des techniciens par défaut au format JSON
+                    default_technician_ids_json = self.env['ir.config_parameter'].sudo().get_param(
+                        'gpl_fleet.default_technician_ids_json', '[]')
+
+                    try:
+                        import json
+                        default_technician_ids = json.loads(default_technician_ids_json)
+                        if default_technician_ids:
+                            vals['technician_ids'] = [(6, 0, default_technician_ids)]
+                    except:
+                        # Ignorer les erreurs de conversion
+                        pass
+
+            # Véhicule avec réservoir
             if vals.get('vehicle_id'):
                 vehicle = self.env['gpl.vehicle'].browse(vals['vehicle_id'])
                 if vehicle and vehicle.reservoir_lot_id:
@@ -116,10 +146,13 @@ class GplService(models.Model):
         for record in self:
             if not record.vehicle_id:
                 raise UserError(_("Veuillez sélectionner un véhicule avant de continuer."))
-            if not record.technician_id:
+            if not record.technician_ids:
                 raise UserError(_("Veuillez assigner un technicien avant de continuer."))
             if not record.date_service:
                 raise UserError(_("Veuillez définir une date de service avant de continuer."))
+
+            # Éclater les kits en leurs composants
+            self._explode_kits()
 
             # Créer un bon de commande client si ce n'est pas déjà fait
             if not record.sale_order_id and record.installation_line_ids:
@@ -150,6 +183,68 @@ class GplService(models.Model):
                 record.message_post(body=msg)
 
         return True
+
+    def _explode_kits(self):
+        """Éclate les kits en leurs composants"""
+        self.ensure_one()
+        lines_to_unlink = self.env['gpl.installation.line']
+        lines_to_create = []
+
+        for line in self.installation_line_ids:
+            if line.product_id.is_gpl_kit:
+                # Récupérer les composants du kit
+                components = self._get_kit_components(line.product_id, line.product_uom_qty)
+
+                if components:
+                    # Marquer cette ligne pour suppression
+                    lines_to_unlink |= line
+
+                    # Créer les lignes pour chaque composant
+                    for component in components:
+                        component_vals = {
+                            'installation_id': self.id,
+                            'product_id': component['product_id'],
+                            'product_uom_qty': component['qty'],
+                            # Conserver le prix du kit
+                            'price_unit': line.price_unit / len(components) if components else line.price_unit,
+                        }
+                        lines_to_create.append(component_vals)
+
+        # Supprimer les lignes de kit
+        if lines_to_unlink:
+            lines_to_unlink.unlink()
+
+        # Créer les nouvelles lignes pour les composants
+        for vals in lines_to_create:
+            self.env['gpl.installation.line'].create(vals)
+
+    def _get_kit_components(self, kit_product, quantity=1.0):
+        """Récupère les composants d'un kit - version compatible avec toutes les versions d'Odoo"""
+        self.ensure_one()
+        result = []
+
+        # Rechercher les nomenclatures pour ce produit
+        boms = self.env['mrp.bom'].sudo().search([
+            '|',
+            ('product_id', '=', kit_product.id),
+            '&',
+            ('product_id', '=', False),
+            ('product_tmpl_id', '=', kit_product.product_tmpl_id.id),
+        ], limit=1)
+
+        if not boms:
+            return result
+
+        bom = boms[0]
+
+        # Pour chaque ligne de la nomenclature
+        for line in bom.bom_line_ids:
+            result.append({
+                'product_id': line.product_id.id,
+                'qty': line.product_qty * quantity,
+            })
+
+        return result
 
     def _create_simplified_picking(self):
         """Crée un bon de livraison en mode simplifié sans demander confirmation"""
@@ -773,6 +868,17 @@ class GplService(models.Model):
             'target': 'current',
             'context': {'create': False}
         }
+
+    def get_certification_text(self):
+        """Récupère le texte de certification depuis les paramètres"""
+        text = self.env['ir.config_parameter'].sudo().get_param(
+            'gpl_fleet.certification_text',
+            # Texte par défaut si aucun paramètre n'est trouvé
+            """Certifions que le véhicule décrit ci-dessous a été équipé conformément aux prescriptions de l'arrêté
+du 31 Août 1983 relatif aux conditions d'équipement de surveillance et d'exploitation des installations
+de GPL équipant les véhicules automobiles."""
+        )
+        return text
 
 class GplInstallationLine(models.Model):
     _name = 'gpl.installation.line'

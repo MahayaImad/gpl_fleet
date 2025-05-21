@@ -22,6 +22,34 @@
 
                                     <field name="gpl_auto_invoice"/>
                             </setting>
+
+                            <setting id="gpl_use_default_technician"
+                                     title="Technicien par défaut"
+                                     string="Technicien par défaut"
+                                     help="Utiliser un technicien par défaut pour les nouvelles installations GPL">
+                                <field name="gpl_use_default_technician" />
+                            </setting>
+
+                            <setting invisible="gpl_use_default_technician == False"
+                                     id="gpl_default_technician_id"
+                                     title="Sélection du technicien"
+                                     string="Sélection du technicien"
+                                     help="Sélectionnez le technicien qui sera assigné par défaut aux nouvelles installations">
+                                <field name="gpl_default_technician_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                                <!-- N'affichez pas le champ JSON dans l'interface -->
+                                <field name="gpl_default_technician_ids_json" invisible="1"/>
+                            </setting>
+                        </block>
+
+                         <block title="Paramètres des rapports" id="gpl_legal_texts_settings">
+                            <setting id="gpl_certification_text_setting" string="Texte de certification GPL" help="Texte légal qui apparaîtra sur les certificats de montage GPL">
+                                <div class="content-group">
+                                    <div class="mt16">
+                                        <field name="gpl_certification_text" class="o_light_label" placeholder="Texte de certification..."
+                                               style="min-height: 100px;"/>
+                                    </div>
+                                </div>
+                            </setting>
                         </block>
                     </app>
                 </xpath>

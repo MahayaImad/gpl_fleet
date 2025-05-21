@@ -114,7 +114,8 @@
                             <field name="currency_id" invisible="1"/>
                         </group>
                         <group string="Intervenant et matériel">
-                            <field name="technician_id" required="1" options="{'no_create': True}"/>
+                            <field name="technician_ids" widget="many2many_tags" options="{'color_field': 'color', 'no_create': True}"
+                                   required="1" placeholder="Ajouter des techniciens..."/>
                             <field name="sale_order_id" readonly="1" invisible="sale_order_id == False"/>
                             <field name="picking_id" readonly="1" invisible="picking_id == False"/>
                             <field name="invoice_id" readonly="1" invisible="invoice_id == False"/>
@@ -128,13 +129,18 @@
                     <page string="Produits à commander">
 
                         <field name="installation_line_ids">
-        <tree editable="bottom">
+        <tree editable="bottom"
+              decoration-danger="is_gpl_reservoir == True and lot_id == False"
+              decoration-success="is_gpl_reservoir == True and lot_id != False">
             <field name="product_id" options="{'no_create': True}" required="1"/>
             <field name="product_uom_qty"/>
-            <field name="lot_id"
+            <!--<field name="lot_id"
                    domain="[('id', 'in', available_lot_ids)]"
                    options="{'no_create': True}"
-                    column_invisible="1"/>
+                    column_invisible="1"/>-->
+            <field name="lot_id"
+               domain="[('id', 'in', available_lot_ids)]"
+               options="{'no_create': True}"/>
             <field name="serial_number" column_invisible="1"/>
             <field name="is_gpl_reservoir" invisible="1" column_invisible="1"/>
             <field name="qty_available" widget="badge"
@@ -227,7 +233,7 @@
                 <field name="client_id"/>
                 <field name="vehicle_id"/>
                 <field name="date_service"/>
-                <field name="technician_id"/>
+                <field name="technician_ids"/>
                 <field name="reservoir_lot_id"/>
                 <field name="currency_id" invisible="1"/>
                 <field name="total_amount" sum="Total" widget="monetary"/>
@@ -244,7 +250,7 @@
                 <field name="name"/>
                 <field name="client_id"/>
                 <field name="vehicle_id"/>
-                <field name="technician_id"/>
+                <field name="technician_ids"/>
                 <field name="reservoir_lot_id"/>
                 <separator/>
                 <filter string="Préparation" name="draft" domain="[('state', '=', 'draft')]"/>
@@ -262,7 +268,7 @@
                 <group expand="1" string="Regrouper par">
                     <filter string="client_id" name="client" context="{'group_by': 'client_id'}"/>
                     <filter string="Véhicule" name="vehicle" context="{'group_by': 'vehicle_id'}"/>
-                    <filter string="Technicien" name="technician" context="{'group_by': 'technician_id'}"/>
+                    <filter string="Techniciens" name="technician" context="{'group_by': 'technician_ids'}"/>
                     <filter string="État" name="state" context="{'group_by': 'state'}"/>
                     <filter string="Date de service" name="date_service" context="{'group_by': 'date_service'}"/>
                 </group>
@@ -279,7 +285,7 @@
                 <field name="name"/>
                 <field name="client_id"/>
                 <field name="vehicle_id"/>
-                <field name="technician_id"/>
+                <field name="technician_ids"/>
             </calendar>
         </field>
     </record>
@@ -293,7 +299,7 @@
                 <field name="name"/>
                 <field name="client_id"/>
                 <field name="vehicle_id"/>
-                <field name="technician_id"/>
+                <field name="technician_ids"/>
                 <field name="date_service"/>
                 <field name="state"/>
                 <field name="total_amount"/>
@@ -324,8 +330,8 @@
                                     <t t-esc="record.date_service.value"/>
                                 </div>
                                 <div>
-                                    <strong>Technicien:</strong>
-                                    <t t-esc="record.technician_id.value"/>
+                                    <strong>Techniciens:</strong>
+                                    <t t-esc="record.technician_ids.value"/>
                                 </div>
                                 <div t-if="record.products_count.raw_value > 0" class="mt8">
                                     <span class="o_value">
@@ -363,7 +369,7 @@
         <field name="arch" type="xml">
             <pivot string="Analyse des installations GPL" sample="1">
                 <field name="date_service" type="row" interval="month"/>
-                <field name="technician_id" type="col"/>
+                <field name="technician_ids" type="col"/>
                 <field name="total_amount" type="measure"/>
                 <field name="products_count" type="measure"/>
             </pivot>

@@ -47,6 +47,9 @@
         'views/product_template.xml',
         'views/res_config_settings_views.xml',
         'views/gpl_menus.xml',
+
+        'report/gpl_certificates.xml',
+        'report/gpl_reports.xml',
     ],
     'installable': True,
     'application': True,

@@ -39,10 +39,11 @@
                                 class="oe_stat_button"
                                 icon="fa-cogs"
                                 help="Voir les installations GPL associées à ce véhicule"
-                                invisible = "installation_count == 0">
-                             <div class="o_stat_info">
+                                invisible="installation_count == 0">
+                            <div class="o_stat_info">
                                 <field name="installation_count" class="o_stat_value"/>
-                                <span class="o_stat_text">Installations</span>
+                                <span class="o_stat_text" invisible = "installation_count != 1">Installation</span>
+                                <span class="o_stat_text" invisible = "installation_count == 1">Installations</span>
                             </div>
                         </button>
                         <button name="action_view_repairs"
@@ -91,6 +92,16 @@
                         </group></div>
                         <group string="Véhicule">
                             <field name="vin_sn"/>
+                            <label for="vehicle_type_code"/>
+                            <div class="o_row">
+                                <field name="vehicle_type_code" placeholder="Type du véhicule"/>
+                                <button name="action_reset_vehicle_type_code"
+                                        type="object"
+                                        string="↺"
+                                        title="Réinitialiser selon VIN"
+                                        class="btn btn-sm btn-link"
+                                        invisible="vin_sn == False"/>
+                            </div>
                             <field name="model_year"/>
                             <field name="color"/>
                             <field name="transmission"/>

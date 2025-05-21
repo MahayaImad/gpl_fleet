@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="report_gpl_montage_certificate">
+        <t t-call="web.basic_layout">
+            <t t-foreach="docs" t-as="o">
+                    <div class="page position-relative">
+                        <!-- Styles spécifiques pour ce rapport -->
+                        <style>
+                            /* Styles pour les caractères accentués */
+                            @font-face {
+                                font-family: 'Roboto';
+                                src: url('/web/static/lib/roboto/fonts/Roboto-Regular.ttf') format('truetype');
+                                font-weight: normal;
+                                font-style: normal;
+                            }
+                            body {
+                                font-family: 'Roboto', sans-serif;
+                            }
+
+                            /* Styles pour le tableau principal */
+                            .certificate-table {
+                                width: 100%;
+                                border-collapse: collapse !important;
+                            }
+                            .certificate-table td .certificate-table th {
+                                padding: 8px 4px;
+                                vertical-align: top;
+                            }
+                            .certificate-table .label {
+                                font-weight: bold;
+                                white-space: nowrap;
+                            }
+
+                            /* Styles pour l'en-tête */
+                            .certificate-header {
+                                text-align: center;
+                                margin-bottom: 15px;
+                                padding-bottom: 15px;
+                                border-bottom: 2px solid #4CAF50;
+                            }
+
+                            /* Styles pour les sections */
+                            .certificate-section {
+                                margin-bottom: 15px;
+                                padding: 10px;
+                                border-radius: 5px;
+                                background-color: #f9f9f9;
+                            }
+
+                            /* Style pour le titre */
+                            .certificate-title {
+                                font-size: 36px;
+                                font-weight: bold;
+                                color: #333;
+                                margin-top: 10px;
+                                text-transform: uppercase;
+                                letter-spacing: 1px;
+                            }
+
+                            /* Style pour le sous-titre */
+                            .certificate-subtitle {
+                                color: #555;
+                                font-size: 20px;
+                                font-weight: bold;
+                                text-transform: uppercase;
+                                margin-top: 5px;
+                            }
+
+                            /* Style pour les informations d'installation */
+                            .installation-info {
+                                background-color: #f0f7ff;
+                                border-left: 4px solid #3498db;
+                            }
+
+                            /* Style pour les informations de véhicule */
+                            .vehicle-info {
+                                background-color: #fff8f0;
+                                border-left: 4px solid #e67e22;
+                            }
+
+                            /* Style pour les informations de réservoir */
+                            .reservoir-info {
+                                background-color: #f0fff8;
+                                border-left: 4px solid #2ecc71;
+                            }
+
+                            /* Style pour la zone de signature */
+                            .signature-area {
+                                min-height: 60px;
+                                border-bottom: 1px solid #999;
+                                margin-top: 10px;
+                                margin-bottom: 5px;
+                            }
+
+                            /* Style pour le watermark en filigrane */
+                            .watermark {
+                                position: absolute;
+                                top: 50%;
+                                left: 50%;
+                                transform: translate(-50%, -50%);
+                                opacity: 0.07;
+                                z-index: -1;
+                                width: 60%;
+                            }
+                        </style>
+
+                        <!-- Filigrane en arrière-plan -->
+                        <!--<div class="watermark">
+                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" alt="Logo"/>
+                        </div>-->
+
+                        <!-- En-tête du certificat -->
+                        <div class="certificate-header row">
+                            <div class="col-3 text-left">
+                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="max-height: 130px;" alt="Logo"/>
+                            </div>
+                            <div class="col-9 text-center" style="padding-top: 20px;">
+                                <h1 class="certificate-title">Certificat de Montage</h1>
+                                <p class="certificate-subtitle">Installation GPL</p>
+                            </div>
+                        </div>
+
+                        <!-- Déclaration de conformité -->
+                        <div class="mb-4">
+                            <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px; padding-top: 45px;">Nous soussignés</h3>
+                            <p style="text-align: justify; line-height: 1.5;">
+                                <t t-esc="o.get_certification_text()"/>
+                            </p>
+                        </div>
+
+                        <!-- Résultat de test -->
+                        <div class="alert alert-success mb-4 text-center" role="alert">
+                            <strong style="font-size: 16px;">
+                                L'installation GPL a subi avec succès l'essai d'étanchéité à
+                                <t t-esc="int(o.etancheite_pressure) if o.etancheite_pressure else 10"/> bars
+                            </strong>
+                        </div>
+
+                        <!-- Informations du véhicule -->
+                        <div class="certificate-section vehicle-info mb-4">
+                            <h4 style="color: #e67e22;">INFORMATION VÉHICULE</h4>
+                                <div class="row mt-2">
+                                    <div class="col-6"><strong>Véhicule N°:</strong> <span style="margin-left:5px;" t-field="o.vehicle_id.license_plate"/></div>
+                                    <div class="col-6"><strong>Appartenant à:</strong><span style="margin-left:5px;" t-field="o.client_id.name"/></div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-6"><strong>Marque:</strong> <span style="margin-left:5px;" t-field="o.vehicle_id.model_id.brand_id.name"/> </div>
+                                    <div class="col-6"><strong>Type:</strong> <span style="margin-left:5px;" t-field="o.vehicle_id.vehicle_type_code"/> </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-12"><strong>N° série:</strong><span style="margin-left:5px;" t-field="o.vehicle_id.vin_sn"/></div>
+                                </div>
+                        </div>
+
+                        <!-- Informations du réservoir -->
+                        <div class="certificate-section reservoir-info mb-4">
+                            <h4 style="color: #2ecc71;">INFORMATION RÉSERVOIR GPL</h4>
+                            <div class="row mt-2">
+                                <div class="col-6"><strong>Réservoir GPL N°:</strong>
+                                    <t t-if="o.reservoir_lot_id">
+                                        <span style="margin-left:5px;" t-field="o.reservoir_lot_id.name"/>
+                                    </t>
+                                </div>
+                                <div class="col-6"><strong>Fabriqué en:</strong>
+                                    <t t-if="o.reservoir_lot_id and o.reservoir_lot_id.certification_date">
+                                        <span style="margin-left:5px;" t-field="o.reservoir_lot_id.certification_date.year"/>
+                                    </t>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-6"><strong>Fabricant:</strong>
+                                    <t t-if="o.reservoir_lot_id and o.reservoir_lot_id.product_id.fabricant_id">
+                                        <span style="margin-left:5px;" t-field="o.reservoir_lot_id.product_id.fabricant_id.name"/>
+                                    </t>
+                                </div>
+                                <div class="col-6"><strong>Capacité:</strong>
+                                    <t t-if="o.reservoir_lot_id and o.reservoir_lot_id.product_id.capacity">
+                                        <span style="margin-left:5px;" t-field="o.reservoir_lot_id.product_id.capacity"/> litres
+                                    </t>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-6"><strong>Épreuve du:</strong>
+                                    <t t-if="o.reservoir_lot_id and o.reservoir_lot_id.certification_date">
+                                        <span style="margin-left:5px;" t-field="o.reservoir_lot_id.certification_date" t-options="{'format': 'MM/yyyy'}"/>
+                                    </t>
+                                </div>
+                                <div class="col-6"><strong>À réeprouver avant le:</strong>
+                                    <t t-if="o.reservoir_lot_id and o.reservoir_lot_id.expiry_date">
+                                        <span style="margin-left:5px;" t-field="o.reservoir_lot_id.expiry_date" t-options="{'format': 'MM/yyyy'}"/>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section installateur -->
+                        <div class="certificate-section installation-info mt-5 mb-4">
+                            <h4 style="color: #3498db; text-transform: uppercase; text-align: center; font-weight: bold;">Installateur</h4>
+                            <div class="row mt-2">
+                                    <div class="col-12"><strong>Raison Sociale:</strong> <span style="margin-left:5px;" t-field="o.company_id.name"/></div>
+                            </div>
+                            <div class="row mt-2">
+                                    <div class="col-12"><strong>Adresse:</strong>
+                                        <span style="margin-left:5px;" t-field="o.company_id.street"/>
+                                        <t t-if="o.company_id.street2">
+                                            <span style="margin-left:5px;" t-field="o.company_id.street2"/>
+                                        </t>
+                                        <span style="margin-left:5px;" t-field="o.company_id.city"/>
+                                    </div>
+                            </div>
+                        </div>
+
+                        <!-- Certification et Lieu et date -->
+                        <div class="mt-5 text-center">
+                            <h3>Certifié Sincère</h3>
+
+                            <div class="row mt-4">
+                                <div class="col-6 text-left">
+                                    <p><strong>Fait à:</strong> <span t-field="o.company_id.city"/></p>
+                                </div>
+                                <div class="col-6 text-right">
+                                    <p><strong>Le:</strong>
+                                        <span t-field="o.date_completion" t-options="{'format': 'dd/MM/yyyy'}"/>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Signature et cachet -->
+                            <div class="row mt-4">
+                                <div class="col-6 text-center">
+                                    <p><strong>L'installateur</strong></p>
+                                    <div class="signature-area"></div>
+                                    <span t-if="o.technician_ids">
+                                        <span t-field="o.technician_ids.name"/>
+                                    </span>
+                                </div>
+                                <div class="col-6 text-center">
+                                    <p><strong>Cachet</strong></p>
+                                    <div style="border: 1px dashed #999; height: 100px; width: 200px; margin: 0 auto;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bas de page avec numéro de certificat -->
+                        <div class="mt-5 pt-3 text-center" style="border-top: 1px solid #ddd; font-size: 80%; color: #777; ">
+                            <p>
+                                <strong>N° Certificat:</strong> <span t-field="o.name"/>
+                                <span t-if="o.date_completion"> | Date d'installation: <span t-field="o.date_completion" t-options="{'format': 'dd/MM/yyyy'}"/></span>
+                            </p>
+                        </div>
+                    </div>
+                </t>
+            </t>
+    </template>
+</odoo>
