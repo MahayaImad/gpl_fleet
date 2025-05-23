@@ -120,7 +120,8 @@
                             <field name="picking_id" readonly="1" invisible="picking_id == False"/>
                             <field name="invoice_id" readonly="1" invisible="invoice_id == False"/>
                             <field name="total_amount" widget="monetary"
-                                   invisible ="installation_line_ids == False"                                   options="{'currency_field': 'currency_id'}"/>
+                                   invisible ="installation_line_ids == False"
+                                   options="{'currency_field': 'currency_id'}"/>
                         </group>
                     </group>
 
@@ -162,12 +163,12 @@
                     </notebook>
 
 
-                    <div id="info_1"  class="alert alert-info" role="status" invisible = "state != 'draft'">
+                    <div id="info_1" class="alert alert-info" role="status" invisible="state != 'draft'">
                         <strong>Étape 1/4 : Préparation</strong><br/>
                         <div invisible="use_simplified_flow == False">
                             <i class="fa fa-info-circle" title=" "/> <b>Mode simplifié activé:</b>
                             Ajoutez les produits nécessaires puis validez la préparation pour créer automatiquement
-                            un bon de commande client et un bon de livraison.
+                            un bon de commande client confirmé et un bon de livraison prêt.
                         </div>
                         <div invisible="use_simplified_flow == True">
                             <i class="fa fa-info-circle" title=" "/> Ajoutez les produits nécessaires puis validez la préparation
@@ -180,15 +181,22 @@
                         à l'installation et passer à l'étape suivante.
                     </div>
 
-                    <div id="info_3" class="alert alert-warning" role="status" invisible ="state != 'in_progress'">
-                        <strong>Étape 3/4 : Installation en cours</strong><br/>
-                        <i class="fa fa-info-circle" title=" "/> L'installation est en cours. Une fois les travaux terminés,
-                        cliquez sur "Terminer installation" pour finaliser le processus.
+                    <div id="info_3" class="alert alert-warning" role="status" invisible="state != 'in_progress'">
+                        <strong>Installation en cours</strong><br/>
+                        <div invisible="use_simplified_flow == False">
+                            <i class="fa fa-info-circle" title=" "/> L'installation est en cours. Une fois les travaux terminés,
+                            cliquez sur "Terminer installation" pour finaliser le processus.
+                        </div>
+                        <div invisible="use_simplified_flow == True">
+                            <i class="fa fa-info-circle" title=" "/> <b>Mode simplifié - Étape 2/2:</b>
+                            Les documents sont préparés. Une fois l'installation physique terminée,
+                            cliquez sur "Terminer installation" pour valider le bon de livraison et créer la facture.
+                        </div>
                     </div>
 
                     <div id="info_4" class="alert alert-success" role="status" invisible = "state != 'done'">
                         <strong>Étape 4/4 : Installation terminée</strong><br/>
-                        <i class="fa fa-check-circle" title=""/>
+                        <i class="fa fa-check-circle" title=" "/>
                         <span invisible ="invoice_id != False">
                             <span invisible="use_simplified_flow == False">
                                 La facture sera créée automatiquement lors de la facturation périodique.

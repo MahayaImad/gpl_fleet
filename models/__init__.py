@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from . import res_config_settings
 from . import mrp_bom
 from . import product_template
@@ -13,5 +11,3 @@ from . import gpl_service
 from . import gpl_repair
 from . import gpl_inspection
 from . import gpl_reservoir_testing
-
-

@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_gpl_triennial_certificate">
+        <t t-call="web.basic_layout">
+            <t t-foreach="docs" t-as="o">
+                <div class="page position-relative">
+                    <!-- Styles spécifiques pour ce rapport -->
+                    <style>
+                        @font-face {
+                            font-family: 'Roboto';
+                            src: url('/web/static/lib/roboto/fonts/Roboto-Regular.ttf') format('truetype');
+                            font-weight: normal;
+                            font-style: normal;
+                        }
+                        body {
+                            font-family: 'Roboto', sans-serif;
+                        }
+                        .field-box {
+                            border: 1px dotted #ccc;
+                            padding: 6px 10px;
+                            margin-bottom: 15px;
+                            min-height: 30px;
+                        }
+                        .field-label {
+                            font-weight: bold;
+                            color: #333;
+                            margin-bottom: 5px;
+                            text-align: center;
+                            font-size: 18px;
+                        }
+                        .certificate-title {
+                            font-size: 28px;
+                            font-weight: bold;
+                            color: #333;
+                            margin-top: 10px;
+                            text-transform: uppercase;
+                            text-align: center;
+                        }
+                        .certificate-header {
+                            text-align: center;
+                            margin-bottom: 55px;
+                            padding-bottom: 15px;
+                            border-bottom: 2px solid #4CAF50;
+                        }
+                        .company-info {
+                            text-align: center;
+                            font-size: 14px;
+                            line-height: 1.4;
+                        }
+                        .section-separator {
+                            border-top: 1px solid #ddd;
+                            margin: 15px 0;
+                            margin-bottom : 35px;
+                        }
+                        .installation-notes {
+                            background-color: #f5f5f5;
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                            margin: 15px 0;
+                            min-height: 100px;
+                        }
+                        /* Styles pour les group boxes */
+                        .group-box {
+                            border: 2px dotted #ddd;
+                            border-radius: 8px;
+                            margin: 15px 0;
+                            padding: 0;
+                            position: relative;
+                            background-color: #fafafa;
+                        }
+
+                        .group-box-header {
+                            background-color: #f0f0f0;
+                            border-bottom: 1px solid #ddd;
+                            padding: 8px 15px;
+                            font-weight: bold;
+                            color: #333;
+                            font-size: 16px;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                        }
+
+                        .group-box-content {
+                            padding: 18px;
+                        }
+
+                        /* Alternative style avec legend */
+                        .group-box-legend {
+                            border: 2px dotted #ddd;
+                            border-radius: 8px;
+                            margin: 15px;
+                            padding: 15px;
+                            position: relative;
+                            background-color: #fafafa;
+                        }
+
+                        .group-box-legend .legend-title {
+                            position: absolute;
+                            top: -12px;
+                            left: 15px;
+                            background-color: white;
+                            padding: 0 10px;
+                            font-weight: bold;
+                            color: #555;
+                            font-size: 18px;
+                        }
+                         .group-box-modern {
+                            border: 1px solid #e0e0e0;
+                            border-left: 4px solid #4CAF50;
+                            border-radius: 5px;
+                            margin: 20px 0;
+                            background-color: #fafafa;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        }
+
+                        .group-box-modern .header {
+                            background-color: #f5f5f5;
+                            border-bottom: 1px solid #e0e0e0;
+                            padding: 10px 15px;
+                            font-weight: bold;
+                            color: #4CAF50;
+                            font-size: 14px;
+                        }
+
+                        .group-box-modern .content {
+                            padding: 15px;
+                        }
+                    </style>
+
+                    <!-- En-tête du certificat -->
+                    <div class="certificate-header row">
+                        <div class="col-3 text-left">
+                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="max-height: 100px;" alt="Logo"/>
+                        </div>
+                        <div class="col-9 text-center">
+                            <h1 class="certificate-title">Certificat de Contrôle Triennal</h1>
+                            <div class="company-info mt-2">
+                                <div t-field="o.company_id.name" style="font-weight: bold; font-size: 16px;"/>
+                                <div>INSTALLATION ET REPARATION DE KIT GPL</div>
+                                <div>
+                                    <span t-field="o.company_id.street"/>
+                                    <t t-if="o.company_id.street2">
+                                        <span t-field="o.company_id.street2"/>
+                                    </t>
+                                    <span t-field="o.company_id.city"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Informations du propriétaire -->
+                <div class="group-box-legend">
+                    <div class="legend-title">Raison :</div>
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="field-label" t-field="o.vehicle_id.client_id.name" />
+                        </div>
+                    </div>
+                </div>
+
+                   <!-- <div class="group-box-modern">
+                        <div class="header">
+                            <i class="fa fa-user"></i> Informations du Propriétaire
+                        </div>
+                        <div class="content">
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="field-label">Raison Sociale :</div>
+                                    <div class="field-box" t-field="o.vehicle_id.client_id.name"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>-->
+
+                    <div class="section-separator"></div>
+
+                    <!-- Informations du véhicule -->
+                    <div class="row">
+                        <div class="col-2"/>
+                        <div class="col-4">
+                            <div class="group-box-legend">
+                                <div class="legend-title">Vehicule :</div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="field-label" t-field="o.vehicle_id.model_id.brand_id.name" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="group-box-legend">
+                                <div class="legend-title">Matricule :</div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="field-label" t-field="o.vehicle_id.license_plate" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-2"/>
+                    </div>
+                    <div class="row" style="margin-bottom: 25px;"/>
+                   <div class="row">
+                        <div class="col-2"/>
+                        <div class="col-4">
+                            <div class="group-box-legend">
+                                <div class="legend-title">Type :</div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="field-label" t-field="o.vehicle_id.vehicle_type_code" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="group-box-legend">
+                                <div class="legend-title">N° Serie :</div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="field-label" t-field="o.vehicle_id.vin_sn" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-2"/>
+                    </div>
+
+                    <div class="section-separator"></div>
+
+                    <!-- Informations d'autorisation -->
+
+                    <div class="row">
+                        <div class="col-2"/>
+                        <div class="col-4">
+                            <div class="group-box-legend">
+                                <div class="legend-title">Autorisation N° :</div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="field-label" t-field="o.certification_number" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="group-box-legend">
+                                <div class="legend-title">Delivrée Par :</div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="field-label" t-field="o.technician_ids.name" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-2"/>
+                    </div>
+
+                    <div class="section-separator"></div>
+
+                    <!-- Informations du réservoir -->
+                   <div class="row">
+                        <div class="col-4">
+                            <div class="group-box-legend">
+                                <div class="legend-title">Réservoir N° :</div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="field-label" t-field="o.reservoir_lot_id.name" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="group-box-legend">
+                                <div class="legend-title">Fabriqué Par :</div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="field-label" t-field="o.reservoir_lot_id.product_id.fabricant_id.name" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                       <div class="col-4">
+                            <div class="group-box-legend">
+                                <div class="legend-title">Volume :</div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="field-label" t-field="o.reservoir_lot_id.product_id.capacity" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-4">
+                            <div class="group-box-legend">
+                                <div class="legend-title">Epreuve Initiale :</div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="field-label">
+                                            <t t-if="o.reservoir_lot_id.certification_date">
+                                                <span t-field="o.reservoir_lot_id.certification_date" t-options="{'format': 'MM/yyyy'}"/>
+                                            </t>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-8">
+                            <div class="group-box-legend">
+                                <div class="legend-title">A Reeprouver Avant :</div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="field-box">
+                                            <t t-if="o.reservoir_lot_id.expiry_date">
+                                                <span t-field="o.reservoir_lot_id.expiry_date" t-options="{'format': 'MM/yyyy'}"/>
+                                            </t>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-separator"></div>
+
+                    <!-- Constatations et résultats des tests -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="field-label">Installation GPL &amp; Constatations :</div>
+                            <div class="installation-notes text-center">
+                                <div style="font-weight: bold; margin-top: 10px;">INSTALLATION CONFORME A LA REGLEMENTATION</div>
+                                <div style="margin-top: 10px;">TEST D'ETANCHEITE A
+                                    <t t-esc="int(o.etancheite_pressure) if o.etancheite_pressure else 10"/>  BARS DE PRESSION EFFECTUE
+                                </div>
+                                <div style="margin-top: 10px;">TEST POSITIF</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Date du prochain contrôle -->
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="field-label">Prochain Contrôle Technique :</div>
+                            <div class="field-box">
+                                <t t-if="o.date_service">
+                                    <span t-esc="(o.date_service + relativedelta(years=1)).strftime('%d/%m/%Y')"/>
+                                </t>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div style="text-align: right; margin-top: 20px;">
+                                <div><span t-field="o.company_id.city"/>e : <span t-field="o.date_service" t-options="{'format': 'dd/MM/yyyy'}"/></div>
+                                <div style="margin-top: 10px;">Centre <span t-field="o.company_id.city"/></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Signature et cachet -->
+                    <div class="row mt-5">
+                        <div class="col-6 text-center">
+                            <p><strong>L'installateur</strong></p>
+                            <div style="border-bottom: 1px solid #999; height: 60px;"></div>
+                            <span t-if="o.technician_ids">
+                                <span t-field="o.technician_ids.name"/>
+                            </span>
+                        </div>
+                        <div class="col-6 text-center">
+                            <p><strong>Cachet</strong></p>
+                            <div style="border: 1px dashed #999; height: 80px; width: 150px; margin: 0 auto;"></div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

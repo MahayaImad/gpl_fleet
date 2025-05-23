@@ -29,4 +29,17 @@
         <field name="paperformat_id" ref="gpl_fleet.paperformat_gpl_certificate_montage" />
     </record>
 
+        <!-- Report action for the triennial certificate -->
+    <record id="action_report_gpl_triennial_certificate" model="ir.actions.report">
+        <field name="name">Certificat de Contrôle Triennal</field>
+        <field name="model">gpl.service.installation</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">gpl_fleet.report_gpl_triennial_certificate</field>
+        <field name="report_file">gpl_fleet.report_gpl_triennial_certificate</field>
+        <field name="print_report_name">'Certificat Contrôle Triennal - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_gpl_service_installation" />
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="gpl_fleet.paperformat_gpl_certificate_montage" />
+    </record>
+
 </odoo>

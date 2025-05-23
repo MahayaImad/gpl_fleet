@@ -1,21 +1,20 @@
 import logging
-
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
-from dateutil.relativedelta import relativedelta
-import logging
+
 _logger = logging.getLogger(__name__)
+
+
 class GplService(models.Model):
     _name = 'gpl.service.installation'
     _description = 'Installation GPL'
-    _inherit = ['mail.thread', 'mail.activity.mixin']  # Adding mail features for chatter
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
     name = fields.Char(string="Nom du service", required=True, default="New", copy=False, readonly=True)
 
+    # Réservoir GPL
     reservoir_lot_id = fields.Many2one('stock.lot', string="Suivi Réservoir GPL",
                                        domain="[('product_id.is_gpl_reservoir', '=', True)]", tracking=True)
-
-    # Ces champs peuvent être définis comme related pour afficher les informations du lot
     certification_number = fields.Char(related="reservoir_lot_id.certification_number",
                                        string="N° certification", readonly=True)
     certification_date = fields.Date(related="reservoir_lot_id.certification_date",
@@ -24,15 +23,14 @@ class GplService(models.Model):
                               string="Date expiration", readonly=True)
     reservoir_state = fields.Selection(related="reservoir_lot_id.state",
                                        string="État du réservoir", readonly=True)
-
-    # Le champ serial_number n'est plus nécessaire car on utilise directement le champ 'name' du stock.lot
-    # Si vous voulez le garder pour compatibilité:
     serial_number = fields.Char(related="reservoir_lot_id.name", string="N° série réservoir", readonly=True)
 
+    # Dates
     date_service = fields.Date(string="Date du service")
     date_planned = fields.Date(string="Date planifiée")
     date_completion = fields.Date(string="Date de finalisation")
 
+    # Relations
     vehicle_id = fields.Many2one('gpl.vehicle', string="Vehicule")
     client_id = fields.Many2one(related='vehicle_id.client_id', string="Client", store=True)
     technician_ids = fields.Many2many(
@@ -44,6 +42,8 @@ class GplService(models.Model):
         required=True,
         help="Équipe de techniciens assignée à cette installation"
     )
+
+    # État
     state = fields.Selection([
         ('draft', 'Préparation'),
         ('planned', 'Planifié'),
@@ -52,50 +52,42 @@ class GplService(models.Model):
         ('cancel', 'Annulé')
     ], string="État", default='draft', tracking=True)
 
+    # Lignes et documents
     installation_line_ids = fields.One2many('gpl.installation.line', 'installation_id', string="Produits utilisés")
     picking_id = fields.Many2one('stock.picking', string="Bon de livraison")
     invoice_id = fields.Many2one('account.move', string="Facture")
+    sale_order_id = fields.Many2one('sale.order', string="Bon de commande client", copy=False)
     notes = fields.Text(string="Notes")
 
-    # Statistiques pour le dashboard
+    # Statistiques
     products_count = fields.Integer(string="Nombre de produits", compute="_compute_products_count", store=True)
     total_amount = fields.Float(string="Montant total", compute="_compute_total_amount", store=True)
-    company_id = fields.Many2one('res.company', string='Company',
-                                 default=lambda self: self.env.company)
+
+    # Société et devise
+    company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
 
-    sale_order_id = fields.Many2one('sale.order', string="Bon de commande client", copy=False)
-
-    etancheite_pressure = fields.Float(
-        string="Pression test étanchéité (bars)",
-        default=10.0,
-        help="Pression utilisée pour le test d'étanchéité du système GPL"
-    )
-
-    # Nouveau champ pour indiquer si le flux simplifié est utilisé
+    # Configuration
+    etancheite_pressure = fields.Float(string="Pression test étanchéité (bars)", default=10.0,
+                                       help="Pression utilisée pour le test d'étanchéité du système GPL")
     use_simplified_flow = fields.Boolean(string="Flux simplifié", compute='_compute_use_simplified_flow')
 
     @api.depends('company_id')
     def _compute_use_simplified_flow(self):
-        # Récupérer les paramètres de configuration
         simplified_flow = self.env['ir.config_parameter'].sudo().get_param('gpl_fleet.simplified_flow',
                                                                            'False').lower() == 'true'
         for record in self:
             record.use_simplified_flow = simplified_flow
+
     @api.depends('installation_line_ids')
     def _compute_products_count(self):
         for record in self:
             record.products_count = len(record.installation_line_ids)
 
-
-    @api.depends('installation_line_ids', 'installation_line_ids.product_id', 'installation_line_ids.product_uom_qty')
+    @api.depends('installation_line_ids', 'installation_line_ids.price_subtotal')
     def _compute_total_amount(self):
         for record in self:
-            total = 0.0
-            for line in record.installation_line_ids:
-                total += line.product_id.list_price * line.product_uom_qty
-            record.total_amount = total
-
+            record.total_amount = sum(record.installation_line_ids.mapped('price_subtotal'))
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -103,27 +95,22 @@ class GplService(models.Model):
             if isinstance(vals, dict) and vals.get('name', 'New') == 'New':
                 vals['name'] = self.env['ir.sequence'].next_by_code('gpl.service.installation') or 'New'
 
-            # Utiliser les techniciens par défaut si configurés et non spécifiés
+            # Techniciens par défaut
             if isinstance(vals, dict) and not vals.get('technician_ids'):
-                # Vérifier si l'option est activée
                 use_default_technician = self.env['ir.config_parameter'].sudo().get_param(
                     'gpl_fleet.use_default_technician', 'False').lower() == 'true'
-
                 if use_default_technician:
-                    # Récupérer les IDs des techniciens par défaut au format JSON
                     default_technician_ids_json = self.env['ir.config_parameter'].sudo().get_param(
                         'gpl_fleet.default_technician_ids_json', '[]')
-
                     try:
                         import json
                         default_technician_ids = json.loads(default_technician_ids_json)
                         if default_technician_ids:
                             vals['technician_ids'] = [(6, 0, default_technician_ids)]
                     except:
-                        # Ignorer les erreurs de conversion
                         pass
 
-            # Véhicule avec réservoir
+            # Réservoir du véhicule
             if vals.get('vehicle_id'):
                 vehicle = self.env['gpl.vehicle'].browse(vals['vehicle_id'])
                 if vehicle and vehicle.reservoir_lot_id:
@@ -134,55 +121,81 @@ class GplService(models.Model):
     @api.onchange('vehicle_id')
     def onchange_vehicle_id(self):
         if self.vehicle_id:
-            # Si le véhicule a un réservoir, l'assigner à l'installation
             if self.vehicle_id.reservoir_lot_id:
                 self.reservoir_lot_id = self.vehicle_id.reservoir_lot_id.id
-
-        # Conserver le code existant - définir le client à partir du véhicule
-        if self.vehicle_id and self.vehicle_id.client_id:
-            self.client_id = self.vehicle_id.client_id
+            if self.vehicle_id.client_id:
+                self.client_id = self.vehicle_id.client_id
 
     def action_validate_preparation(self):
+        """Valide la préparation - gère les modes simplifié et standard"""
         for record in self:
+            # Validations de base
             if not record.vehicle_id:
                 raise UserError(_("Veuillez sélectionner un véhicule avant de continuer."))
             if not record.technician_ids:
                 raise UserError(_("Veuillez assigner un technicien avant de continuer."))
             if not record.date_service:
                 raise UserError(_("Veuillez définir une date de service avant de continuer."))
+            if not record.installation_line_ids:
+                raise UserError(_("Veuillez ajouter au moins un produit avant de continuer."))
 
-            # Éclater les kits en leurs composants
-            self._explode_kits()
+            # Éclater les kits en composants
+            record._explode_kits()
 
-            # Créer un bon de commande client si ce n'est pas déjà fait
-            if not record.sale_order_id and record.installation_line_ids:
-                self._create_sale_order()
+            # Validation des lots pour les produits avec tracking
+            record._validate_lots_required()
 
-            # Vérifier si le flux simplifié est activé
-            simplified_flow = self.env['ir.config_parameter'].sudo().get_param('gpl_fleet.simplified_flow',
-                                                                               'False').lower() == 'true'
+            simplified_flow = record.use_simplified_flow
 
             if simplified_flow:
-                # En mode simplifié, on passe directement de brouillon à en cours
-                # 1. Créer le bon de livraison
-                picking = record._create_simplified_picking()
-                if picking:
-                    # 2. Mettre à jour le statut
+                # Mode simplifié : créer BC confirmé + BL prêt
+                try:
+                    sale_order = record._create_and_confirm_sale_order()
+                    picking = record._create_picking_for_simplified_flow()
+
                     record.write({
                         'state': 'in_progress',
                         'date_planned': fields.Date.today(),
-                        'picking_id': picking.id
+                        'sale_order_id': sale_order.id if sale_order else False,
+                        'picking_id': picking.id if picking else False,
                     })
-                    msg = _("Mode simplifié : Préparation validée et bon de livraison %s créé par %s") % (
-                    picking.name, self.env.user.name)
+
+                    msg = _(
+                        "Mode simplifié - Étape 1/2 : Bon de commande %s confirmé et bon de livraison %s préparé par %s") % (
+                              sale_order.name if sale_order else "ERREUR",
+                              picking.name if picking else "ERREUR",
+                              self.env.user.name
+                          )
                     record.message_post(body=msg)
+
+                except Exception as e:
+                    raise UserError(_("Erreur en mode simplifié: %s") % str(e))
             else:
-                # Mode standard
+                # Mode standard : créer seulement le BC
+                if not record.sale_order_id and record.installation_line_ids:
+                    record._create_sale_order()
+
                 record.write({'state': 'planned', 'date_planned': fields.Date.today()})
                 msg = _("Préparation validée par %s") % self.env.user.name
                 record.message_post(body=msg)
 
         return True
+
+    def _validate_lots_required(self):
+        """Valide que tous les produits nécessitant un tracking ont un lot assigné"""
+        self.ensure_one()
+
+        missing_lots = []
+        for line in self.installation_line_ids:
+            if line.product_id.tracking in ['lot', 'serial']:
+                if not line.lot_id:
+                    missing_lots.append(f"• {line.product_id.name}")
+
+        if missing_lots:
+            raise UserError(_(
+                "Les produits suivants nécessitent un numéro de lot/série.\n"
+                "Veuillez les sélectionner dans la colonne 'Numéro de lot/série' :\n\n%s"
+            ) % "\n".join(missing_lots))
 
     def _explode_kits(self):
         """Éclate les kits en leurs composants"""
@@ -192,38 +205,25 @@ class GplService(models.Model):
 
         for line in self.installation_line_ids:
             if line.product_id.is_gpl_kit:
-                # Récupérer les composants du kit
                 components = self._get_kit_components(line.product_id, line.product_uom_qty)
-
                 if components:
-                    # Marquer cette ligne pour suppression
                     lines_to_unlink |= line
-
-                    # Créer les lignes pour chaque composant
                     for component in components:
-                        component_vals = {
+                        lines_to_create.append({
                             'installation_id': self.id,
                             'product_id': component['product_id'],
                             'product_uom_qty': component['qty'],
-                            # Conserver le prix du kit
                             'price_unit': line.price_unit / len(components) if components else line.price_unit,
-                        }
-                        lines_to_create.append(component_vals)
+                        })
 
-        # Supprimer les lignes de kit
         if lines_to_unlink:
             lines_to_unlink.unlink()
-
-        # Créer les nouvelles lignes pour les composants
         for vals in lines_to_create:
             self.env['gpl.installation.line'].create(vals)
 
     def _get_kit_components(self, kit_product, quantity=1.0):
-        """Récupère les composants d'un kit - version compatible avec toutes les versions d'Odoo"""
-        self.ensure_one()
+        """Récupère les composants d'un kit"""
         result = []
-
-        # Rechercher les nomenclatures pour ce produit
         boms = self.env['mrp.bom'].sudo().search([
             '|',
             ('product_id', '=', kit_product.id),
@@ -232,60 +232,68 @@ class GplService(models.Model):
             ('product_tmpl_id', '=', kit_product.product_tmpl_id.id),
         ], limit=1)
 
-        if not boms:
-            return result
-
-        bom = boms[0]
-
-        # Pour chaque ligne de la nomenclature
-        for line in bom.bom_line_ids:
-            result.append({
-                'product_id': line.product_id.id,
-                'qty': line.product_qty * quantity,
-            })
-
+        if boms:
+            for line in boms[0].bom_line_ids:
+                result.append({
+                    'product_id': line.product_id.id,
+                    'qty': line.product_qty * quantity,
+                })
         return result
 
-    def _create_simplified_picking(self):
-        """Crée un bon de livraison en mode simplifié sans demander confirmation"""
+    def _create_and_confirm_sale_order(self):
+        """Crée et confirme un bon de commande client"""
         self.ensure_one()
-
-        if not self.installation_line_ids:
+        if not self.installation_line_ids or not self.client_id:
             return False
 
-        if not self.client_id:
-            raise UserError(_("Aucun client associé au véhicule. Veuillez définir un client."))
+        try:
+            so_vals = {
+                'partner_id': self.client_id.id,
+                'date_order': fields.Datetime.now(),
+                'origin': self.name,
+                'company_id': self.company_id.id,
+                'order_line': [],
+            }
 
-        picking_type = self.env['stock.picking.type'].search([('code', '=', 'outgoing')], limit=1)
-        if not picking_type:
-            raise UserError(_("Aucun type de picking 'Delivery Orders' configuré."))
+            for line in self.installation_line_ids:
+                so_vals['order_line'].append((0, 0, {
+                    'product_id': line.product_id.id,
+                    'name': line.product_id.name,
+                    'product_uom_qty': line.product_uom_qty,
+                    'product_uom': line.product_id.uom_id.id,
+                    'price_unit': line.price_unit,
+                }))
 
-        # Trouver l'emplacement source et destination
-        location_src_id = picking_type.default_location_src_id or self.env.ref('stock.stock_location_stock',
-                                                                               raise_if_not_found=False)
-        if not location_src_id:
-            raise UserError(
-                _("Aucun emplacement source trouvé. Veuillez configurer un emplacement source dans le type d'opération ou dans le stock par défaut."))
+            sale_order = self.env['sale.order'].create(so_vals)
+            if sale_order:
+                sale_order.action_confirm()
+            return sale_order
 
-        # Pour l'emplacement de destination, essayons plusieurs options
-        location_dest_id = picking_type.default_location_dest_id
-        if not location_dest_id:
-            # Essayer de trouver l'emplacement "Client" par défaut
-            location_dest_id = self.env.ref('stock.stock_location_customers', raise_if_not_found=False)
-            if not location_dest_id:
-                # Sinon chercher tout emplacement qui pourrait être une destination externe
-                location_dest_id = self.env['stock.location'].search([
-                    ('usage', '=', 'customer'),
-                    '|', ('company_id', '=', self.env.company.id), ('company_id', '=', False)
-                ], limit=1)
-                if not location_dest_id:
-                    raise UserError(
-                        _("Aucun emplacement destination trouvé. Veuillez configurer un emplacement destination dans le type d'opération ou créer un emplacement 'client_id'."))
+        except Exception as e:
+            _logger.error("Erreur création BC: %s", str(e))
+            raise UserError(_("Erreur lors de la création du bon de commande: %s") % str(e))
+
+    def _create_picking_for_simplified_flow(self):
+        """Crée un bon de livraison prêt pour le mode simplifié"""
+        self.ensure_one()
+        if not self.installation_line_ids or not self.client_id:
+            return False
 
         try:
+            picking_type = self.env['stock.picking.type'].search([('code', '=', 'outgoing')], limit=1)
+            if not picking_type:
+                raise UserError(_("Aucun type de picking configuré."))
+
+            location_src_id = picking_type.default_location_src_id or self.env.ref('stock.stock_location_stock',
+                                                                                   raise_if_not_found=False)
+            location_dest_id = picking_type.default_location_dest_id or self.env.ref('stock.stock_location_customers',
+                                                                                     raise_if_not_found=False)
+
+            if not location_src_id or not location_dest_id:
+                raise UserError(_("Emplacements source ou destination non configurés."))
+
             move_vals = []
             for line in self.installation_line_ids:
-                # Créer le dictionnaire de valeurs avec une vérification des champs disponibles
                 vals = {
                     'name': line.product_id.name,
                     'product_id': line.product_id.id,
@@ -294,10 +302,8 @@ class GplService(models.Model):
                     'location_dest_id': location_dest_id.id,
                 }
 
-                # Ajouter le champ de quantité avec le bon nom selon la version d'Odoo
-                # Essayer d'abord 'quantity' (Odoo 17), puis 'product_uom_qty' (versions antérieures)
-                StockMove = self.env['stock.move']
-                if 'quantity' in StockMove._fields:
+                # Gestion compatibilité version Odoo pour quantité
+                if 'quantity' in self.env['stock.move']._fields:
                     vals['quantity'] = line.product_uom_qty
                 else:
                     vals['product_uom_qty'] = line.product_uom_qty
@@ -313,69 +319,52 @@ class GplService(models.Model):
                 'move_ids': move_vals,
             })
 
-            # Confirmer le bon de livraison
+            # Confirmer et assigner
             picking.action_confirm()
-
-            # Pour chaque ligne d'installation, associer le lot au mouvement correspondant
-            for line in self.installation_line_ids:
-                if line.lot_id and line.product_id:
-                    # Trouver le mouvement correspondant à cette ligne
-                    move = picking.move_ids.filtered(lambda m: m.product_id.id == line.product_id.id)
-
-                    if move:
-                        # Utiliser les API appropriées selon la version d'Odoo
-                        if hasattr(move, 'move_line_ids'):
-                            # Pour Odoo 15+
-                            for move_line in move.move_line_ids:
-                                move_line.lot_id = line.lot_id.id
-                                # Mettre à jour également le numéro de série si c'est un champ disponible
-                                if hasattr(move_line, 'lot_name'):
-                                    move_line.lot_name = line.serial_number
-                        else:
-                            # Fallback pour les versions antérieures
-                            for move_line in move.move_line_nosuggest_ids:
-                                move_line.lot_id = line.lot_id.id
-                                if hasattr(move_line, 'lot_name'):
-                                    move_line.lot_name = line.serial_number
-
-            # Réserver les produits
             picking.action_assign()
 
-            # Si après réservation, certains lots n'ont pas été assignés, les forcer
-            for move in picking.move_ids:
-                if move.state != 'assigned':
-                    for move_line in move.move_line_ids:
-                        # Trouver la ligne d'installation correspondante
-                        install_line = self.installation_line_ids.filtered(
-                            lambda l: l.product_id.id == move.product_id.id)
-
-                        if install_line and install_line.lot_id:
-                            move_line.lot_id = install_line.lot_id.id
-                            if hasattr(move_line, 'lot_name'):
-                                move_line.lot_name = install_line.serial_number
-
-                            # Dans Odoo 17, le champ quantity s'appelle peut-être qty_done
-                            if hasattr(move_line, 'qty_done'):
-                                move_line.qty_done = install_line.product_uom_qty
-                            elif hasattr(move_line, 'quantity'):
-                                move_line.quantity = install_line.product_uom_qty
+            # Assigner les lots spécifiés
+            self._assign_lots_to_picking(picking)
 
             return picking
 
         except Exception as e:
+            _logger.error("Erreur création BL: %s", str(e))
             raise UserError(_("Erreur lors de la création du bon de livraison: %s") % str(e))
 
-    def _create_sale_order(self):
-        """Crée un bon de commande client basé sur les produits utilisés"""
-        self.ensure_one()
+    def _assign_lots_to_picking(self, picking):
+        """Assigne les lots choisis aux mouvements du picking"""
+        for line in self.installation_line_ids:
+            if line.lot_id and line.product_id:
+                move = picking.move_ids.filtered(lambda m: m.product_id.id == line.product_id.id)
+                if move:
+                    # Supprimer les move_lines existantes
+                    move.move_line_ids.unlink()
 
-        if not self.installation_line_ids:
+                    # Créer la move_line avec le lot
+                    move_line_vals = {
+                        'move_id': move.id,
+                        'product_id': move.product_id.id,
+                        'product_uom_id': move.product_uom.id,
+                        'location_id': move.location_id.id,
+                        'location_dest_id': move.location_dest_id.id,
+                        'lot_id': line.lot_id.id,
+                    }
+
+                    # Ajouter la quantité selon la version
+                    qty_fields = ['reserved_uom_qty', 'product_uom_qty', 'quantity']
+                    for field in qty_fields:
+                        if field in self.env['stock.move.line']._fields:
+                            move_line_vals[field] = line.product_uom_qty
+
+                    self.env['stock.move.line'].create(move_line_vals)
+
+    def _create_sale_order(self):
+        """Crée un bon de commande client standard"""
+        self.ensure_one()
+        if not self.installation_line_ids or not self.client_id:
             return False
 
-        if not self.client_id:
-            raise UserError(_("Aucun client associé au véhicule. Veuillez définir un client."))
-
-        # Créer l'entête de la commande client
         so_vals = {
             'partner_id': self.client_id.id,
             'date_order': fields.Datetime.now(),
@@ -384,299 +373,252 @@ class GplService(models.Model):
             'order_line': [],
         }
 
-        # Ajouter les lignes de commande
         for line in self.installation_line_ids:
-            so_line = {
+            so_vals['order_line'].append((0, 0, {
                 'product_id': line.product_id.id,
                 'name': line.product_id.name,
                 'product_uom_qty': line.product_uom_qty,
                 'product_uom': line.product_id.uom_id.id,
                 'price_unit': line.price_unit,
-            }
-            so_vals['order_line'].append((0, 0, so_line))
+            }))
 
-        # Créer la commande client
         sale_order = self.env['sale.order'].create(so_vals)
-
-        # Lier la commande client à l'installation
         self.write({'sale_order_id': sale_order.id})
 
-        # Message de confirmation
-        msg = _("Bon de commande client %s créé pour cette installation.") % sale_order.name
+        msg = _("Bon de commande client %s créé.") % sale_order.name
         self.message_post(body=msg)
-
         return sale_order
 
-    def action_view_sale_order(self):
-        """Ouvre la commande client associée"""
-        self.ensure_one()
-        if not self.sale_order_id:
-            return
-
-        return {
-            'name': _('Bon de commande client'),
-            'view_mode': 'form',
-            'res_model': 'sale.order',
-            'res_id': self.sale_order_id.id,
-            'type': 'ir.actions.act_window',
-        }
-
     def action_create_picking(self):
+        """Crée un bon de livraison en mode standard"""
         self.ensure_one()
-
         if not self.installation_line_ids:
-            # Si aucune ligne n'existe, permettre à l'utilisateur d'en ajouter
             return {
                 'name': _('Ajouter des produits'),
                 'type': 'ir.actions.act_window',
                 'view_mode': 'form',
                 'res_model': 'gpl.installation.add.products',
                 'target': 'new',
-                'context': {
-                    'default_installation_id': self.id,
-                    'default_client_id': self.client_id.id if self.client_id else False,
-                }
+                'context': {'default_installation_id': self.id,
+                            'default_client_id': self.client_id.id if self.client_id else False}
             }
 
         if not self.client_id:
-            raise UserError(_("Aucun client associé au véhicule. Veuillez définir un client."))
-
-        picking_type = self.env['stock.picking.type'].search([('code', '=', 'outgoing')], limit=1)
-        if not picking_type:
-            raise UserError(_("Aucun type de picking 'Delivery Orders' configuré."))
-
-        # Trouver l'emplacement source et destination
-        location_src_id = picking_type.default_location_src_id or self.env.ref('stock.stock_location_stock',
-                                                                               raise_if_not_found=False)
-        if not location_src_id:
-            raise UserError(
-                _("Aucun emplacement source trouvé. Veuillez configurer un emplacement source dans le type d'opération ou dans le stock par défaut."))
-
-        # Pour l'emplacement de destination, essayons plusieurs options
-        location_dest_id = picking_type.default_location_dest_id
-        if not location_dest_id:
-            # Essayer de trouver l'emplacement "Client" par défaut
-            location_dest_id = self.env.ref('stock.stock_location_customers', raise_if_not_found=False)
-            if not location_dest_id:
-                # Sinon chercher tout emplacement qui pourrait être une destination externe
-                location_dest_id = self.env['stock.location'].search([
-                    ('usage', '=', 'customer'),
-                    '|', ('company_id', '=', self.env.company.id), ('company_id', '=', False)
-                ], limit=1)
-                if not location_dest_id:
-                    raise UserError(
-                        _("Aucun emplacement destination trouvé. Veuillez configurer un emplacement destination dans le type d'opération ou créer un emplacement 'Client'."))
+            raise UserError(_("Aucun client associé au véhicule."))
 
         try:
-            move_vals = []
-            for line in self.installation_line_ids:
-                # Créer le dictionnaire de valeurs avec une vérification des champs disponibles
-                vals = {
-                    'name': line.product_id.name,
-                    'product_id': line.product_id.id,
-                    'product_uom': line.product_id.uom_id.id,
-                    'location_id': location_src_id.id,
-                    'location_dest_id': location_dest_id.id,
+            picking = self._create_picking_for_simplified_flow()  # Réutilise la même méthode
+            if picking:
+                self.write({'picking_id': picking.id, 'state': 'in_progress'})
+                msg = _("Bon de livraison %s créé et matériel réservé.") % picking.name
+                self.message_post(body=msg)
+
+                return {
+                    'name': _('Bon de Livraison'),
+                    'type': 'ir.actions.act_window',
+                    'res_model': 'stock.picking',
+                    'view_mode': 'form',
+                    'res_id': picking.id,
                 }
-
-                # Ajouter le champ de quantité avec le bon nom selon la version d'Odoo
-                # Essayer d'abord 'quantity' (Odoo 17), puis 'product_uom_qty' (versions antérieures)
-                StockMove = self.env['stock.move']
-                if 'quantity' in StockMove._fields:
-                    vals['quantity'] = line.product_uom_qty
-                else:
-                    vals['product_uom_qty'] = line.product_uom_qty
-
-                move_vals.append((0, 0, vals))
-
-            picking = self.env['stock.picking'].create({
-                'picking_type_id': picking_type.id,
-                'partner_id': self.client_id.id,
-                'origin': self.name,
-                'location_id': location_src_id.id,
-                'location_dest_id': location_dest_id.id,
-                'move_ids': move_vals,
-            })
-
-            # Confirmer le bon de livraison
-            picking.action_confirm()
-
-            # Pour chaque ligne d'installation, associer le lot au mouvement correspondant
-            for line in self.installation_line_ids:
-                if line.lot_id and line.product_id:
-                    # Trouver le mouvement correspondant à cette ligne
-                    move = picking.move_ids.filtered(lambda m: m.product_id.id == line.product_id.id)
-
-                    if move:
-                        # Utiliser les API appropriées selon la version d'Odoo
-                        if hasattr(move, 'move_line_ids'):
-                            # Pour Odoo 15+
-                            for move_line in move.move_line_ids:
-                                move_line.lot_id = line.lot_id.id
-                                # Mettre à jour également le numéro de série si c'est un champ disponible
-                                if hasattr(move_line, 'lot_name'):
-                                    move_line.lot_name = line.serial_number
-                        else:
-                            # Fallback pour les versions antérieures
-                            for move_line in move.move_line_nosuggest_ids:
-                                move_line.lot_id = line.lot_id.id
-                                if hasattr(move_line, 'lot_name'):
-                                    move_line.lot_name = line.serial_number
-
-            # Réserver les produits
-            picking.action_assign()
-
-            # Si après réservation, certains lots n'ont pas été assignés, les forcer
-            for move in picking.move_ids:
-                if move.state != 'assigned':
-                    for move_line in move.move_line_ids:
-                        # Trouver la ligne d'installation correspondante
-                        install_line = self.installation_line_ids.filtered(
-                            lambda l: l.product_id.id == move.product_id.id)
-
-                        if install_line and install_line.lot_id:
-                            move_line.lot_id = install_line.lot_id.id
-                            if hasattr(move_line, 'lot_name'):
-                                move_line.lot_name = install_line.serial_number
-
-                            # Dans Odoo 17, le champ quantity s'appelle peut-être qty_done
-                            if hasattr(move_line, 'qty_done'):
-                                move_line.qty_done = install_line.product_uom_qty
-                            elif hasattr(move_line, 'quantity'):
-                                move_line.quantity = install_line.product_uom_qty
-
-            self.write({
-                'picking_id': picking.id,
-                'state': 'in_progress'
-            })
-
-            msg = _("Bon de livraison %s créé et matériel réservé. Installation en cours.") % picking.name
-            self.message_post(body=msg)
-
-            return {
-                'name': _('Bon de Livraison'),
-                'type': 'ir.actions.act_window',
-                'res_model': 'stock.picking',
-                'view_mode': 'form',
-                'res_id': picking.id,
-            }
         except Exception as e:
-            raise UserError(_("Erreur lors de la création du bon de livraison: %s") % str(e))
+            raise UserError(_("Erreur: %s") % str(e))
 
     def action_complete_installation(self):
+        """Termine l'installation"""
         for record in self:
-            if not record.picking_id:
-                raise UserError(_("Aucun bon de livraison associé à cette installation."))
-
             try:
-                # 1. Valider le bon de livraison s'il n'est pas déjà validé
-                if record.picking_id.state != 'done':
-                    # Code existant pour valider le bon de livraison
-                    for move in record.picking_id.move_ids.filtered(lambda m: m.state not in ['done', 'cancel']):
-                        for move_line in move.move_line_ids:
-                            # Définir les quantités...
-                            reserved_qty = 0
-                            if hasattr(move_line, 'product_uom_qty'):
-                                reserved_qty = move_line.product_uom_qty
-                            elif hasattr(move_line, 'quantity'):
-                                reserved_qty = move_line.quantity
-                            elif hasattr(move_line, 'reserved_qty'):
-                                reserved_qty = move_line.reserved_qty
-                            elif hasattr(move, 'product_uom_qty'):
-                                reserved_qty = move.product_uom_qty
-                            elif hasattr(move, 'quantity'):
-                                reserved_qty = move.quantity
-                            else:
-                                reserved_qty = 1
+                simplified_flow = record.use_simplified_flow
 
-                            # Appliquer les quantités
-                            if hasattr(move_line, 'qty_done'):
-                                move_line.qty_done = reserved_qty
-                            elif hasattr(move_line, 'quantity'):
-                                move_line.quantity = reserved_qty
-                            else:
-                                try:
-                                    move_line.write({'quantity': reserved_qty})
-                                except Exception:
-                                    try:
-                                        move_line.write({'qty_done': reserved_qty})
-                                    except Exception:
-                                        pass
+                # Valider le bon de livraison
+                if record.picking_id and record.picking_id.state != 'done':
+                    record._validate_picking()
 
-                    # Valider le bon de livraison
-                    record.picking_id.button_validate()
-
-                # 2. Marquer l'installation comme terminée
-                record.write({
-                    'state': 'done',
-                    'date_completion': fields.Date.today()
-                })
-
-                # 3. Mettre à jour le véhicule avec le réservoir
-                if record.vehicle_id:
-                    # MODIFICATION ICI: Définir directement les statuts sans utiliser env.ref
-                    # Mettre à jour le statut et le prochain service
-                    vehicle_values = {
-                        'status_id': 4,  # ID du statut "En attente de validation"
-                        'next_service_type': 'inspection'  # Contrôle technique
-                    }
-
-                    # Si on a un réservoir, l'associer au véhicule
-                    reservoir_line = False
-                    for line in record.installation_line_ids:
-                        if line.product_id.is_gpl_reservoir and line.serial_number:
-                            reservoir_line = line
-                            lot = self.env['stock.lot'].search([
-                                ('name', '=', line.serial_number),
-                                ('product_id', '=', line.product_id.id)
-                            ], limit=1)
-
-                            if lot:
-                                vehicle_values.update({
-                                    'reservoir_lot_id': lot.id,
-                                    'installation_id': record.id
-                                })
-
-                                # Message de traçabilité
-                                vehicle_msg = _(
-                                    "Réservoir GPL (numéro de série: %s) installé via l'installation %s. Véhicule en attente de contrôle technique.") % (
-                                                  lot.name, record.name)
-                                record.vehicle_id.message_post(body=vehicle_msg)
-
-                    # Mettre à jour le véhicule
-                    record.vehicle_id.write(vehicle_values)
-
-                # 4. Facturation automatique si configurée
+                # Créer facture si auto-facturation activée
                 auto_invoice = self.env['ir.config_parameter'].sudo().get_param('gpl_fleet.auto_invoice',
                                                                                 'False').lower() == 'true'
+                invoice = None
                 if auto_invoice and not record.invoice_id:
-                    invoice = record._create_automatic_invoice()
-                    if invoice:
-                        msg = _("Facturation automatique: Facture %s créée.") % invoice.name
-                        record.message_post(body=msg)
+                    invoice = record._create_invoice()
 
-                # 5. Message de confirmation
-                msg = _(
-                    "Installation terminée par %s. Véhicule mis en attente de contrôle technique.") % self.env.user.name
+                # Marquer comme terminé
+                record.write({'state': 'done', 'date_completion': fields.Date.today()})
+
+                # Mettre à jour le véhicule
+                record._update_vehicle_after_installation()
+
+                # Message
+                msg_parts = ["Installation terminée"]
+                if simplified_flow and record.picking_id.state == 'done':
+                    msg_parts.append(f"bon de livraison {record.picking_id.name} validé")
+                if invoice:
+                    msg_parts.append(f"facture {invoice.name} créée")
+
+                msg = _("%s par %s") % (", ".join(msg_parts), self.env.user.name)
                 record.message_post(body=msg)
 
             except Exception as e:
-                raise UserError(_("Erreur lors de la finalisation de l'installation: %s") % str(e))
+                raise UserError(_("Erreur lors de la finalisation: %s") % str(e))
 
         return True
 
-    def _create_automatic_invoice(self):
-        """Crée automatiquement une facture quand l'option auto_invoice est activée"""
+    def _validate_picking(self):
+        """Valide le bon de livraison en s'assurant que tous les lots sont assignés"""
         self.ensure_one()
-
-        if not self.client_id:
-            raise UserError(_("Aucun client lié à l'installation."))
-
-        if not self.installation_line_ids:
-            raise UserError(_("Aucun produit utilisé dans l'installation."))
+        if not self.picking_id:
+            return False
 
         try:
-            # Créer la facture
+            _logger.info("=== DÉBUT VALIDATION PICKING ===")
+
+            # Étape 1: Vérifier et forcer l'assignation des lots
+            self._force_assign_lots_to_picking_moves()
+
+            # Étape 2: Définir les quantités traitées
+            for move in self.picking_id.move_ids.filtered(lambda m: m.state not in ['done', 'cancel']):
+                install_line = self.installation_line_ids.filtered(lambda l: l.product_id.id == move.product_id.id)
+                qty_to_process = install_line.product_uom_qty if install_line else 1.0
+
+                _logger.info(f"Traitement mouvement {move.name} - Produit: {move.product_id.name}")
+                _logger.info(f"Quantité à traiter: {qty_to_process}")
+                _logger.info(f"Move_lines disponibles: {len(move.move_line_ids)}")
+
+                # S'assurer qu'il y a des move_lines
+                if not move.move_line_ids:
+                    _logger.warning(f"Aucune move_line pour {move.name}, création...")
+                    self._create_move_line_for_move(move, install_line)
+
+                # Définir les quantités sur les move_lines
+                for move_line in move.move_line_ids:
+                    if hasattr(move_line, 'qty_done'):
+                        move_line.qty_done = qty_to_process
+                    elif hasattr(move_line, 'quantity'):
+                        move_line.quantity = qty_to_process
+
+                    _logger.info(
+                        f"Move_line {move_line.id} - Lot: {move_line.lot_id.name if move_line.lot_id else 'AUCUN'}")
+
+            # Étape 3: Valider le picking
+            _logger.info("Validation du picking...")
+            self.picking_id.button_validate()
+            _logger.info("=== PICKING VALIDÉ AVEC SUCCÈS ===")
+            return True
+
+        except Exception as e:
+            _logger.error("Erreur validation BL: %s", str(e))
+            raise UserError(_("Erreur lors de la validation du bon de livraison: %s") % str(e))
+
+    def _force_assign_lots_to_picking_moves(self):
+        """Force l'assignation des lots depuis les lignes d'installation vers les mouvements du picking"""
+        self.ensure_one()
+
+        _logger.info("=== ASSIGNATION FORCÉE DES LOTS ===")
+
+        for move in self.picking_id.move_ids:
+            install_line = self.installation_line_ids.filtered(lambda l: l.product_id.id == move.product_id.id)
+
+            if not install_line:
+                _logger.warning(f"Aucune ligne d'installation trouvée pour {move.product_id.name}")
+                continue
+
+            _logger.info(f"Traitement produit: {move.product_id.name}")
+            _logger.info(f"Tracking: {move.product_id.tracking}")
+            _logger.info(f"Lot choisi: {install_line.lot_id.name if install_line.lot_id else 'AUCUN'}")
+
+            # Si le produit nécessite un tracking et qu'un lot est spécifié
+            if move.product_id.tracking in ['lot', 'serial'] and install_line.lot_id:
+                # Supprimer toutes les move_lines existantes
+                move.move_line_ids.unlink()
+
+                # Créer une nouvelle move_line avec le lot spécifique
+                move_line_vals = {
+                    'move_id': move.id,
+                    'product_id': move.product_id.id,
+                    'product_uom_id': move.product_uom.id,
+                    'location_id': move.location_id.id,
+                    'location_dest_id': move.location_dest_id.id,
+                    'lot_id': install_line.lot_id.id,
+                }
+
+                # Ajouter les champs de quantité selon la version Odoo
+                qty = install_line.product_uom_qty
+                StockMoveLine = self.env['stock.move.line']
+
+                for field_name in ['reserved_uom_qty', 'product_uom_qty', 'quantity']:
+                    if field_name in StockMoveLine._fields:
+                        move_line_vals[field_name] = qty
+
+                # Créer la move_line
+                new_move_line = StockMoveLine.create(move_line_vals)
+                _logger.info(f"Move_line créée avec lot {install_line.lot_id.name} pour {move.product_id.name}")
+
+                # Vérifier que le lot a bien été assigné
+                if not new_move_line.lot_id:
+                    raise UserError(_("Échec de l'assignation du lot %s au produit %s") % (
+                    install_line.lot_id.name, move.product_id.name))
+
+            elif move.product_id.tracking in ['lot', 'serial'] and not install_line.lot_id:
+                raise UserError(
+                    _("Le produit %s nécessite un numéro de lot/série mais aucun n'est spécifié dans les lignes d'installation.") % move.product_id.name)
+
+            else:
+                # Produit sans tracking - s'assurer qu'il y a une move_line
+                if not move.move_line_ids:
+                    self._create_move_line_for_move(move, install_line)
+
+    def _create_move_line_for_move(self, move, install_line):
+        """Crée une move_line pour un mouvement donné"""
+        move_line_vals = {
+            'move_id': move.id,
+            'product_id': move.product_id.id,
+            'product_uom_id': move.product_uom.id,
+            'location_id': move.location_id.id,
+            'location_dest_id': move.location_dest_id.id,
+        }
+
+        # Ajouter le lot si nécessaire
+        if install_line and install_line.lot_id:
+            move_line_vals['lot_id'] = install_line.lot_id.id
+
+        # Ajouter la quantité
+        qty = install_line.product_uom_qty if install_line else 1.0
+        StockMoveLine = self.env['stock.move.line']
+
+        for field_name in ['reserved_uom_qty', 'product_uom_qty', 'quantity']:
+            if field_name in StockMoveLine._fields:
+                move_line_vals[field_name] = qty
+
+        return StockMoveLine.create(move_line_vals)
+
+    def _update_vehicle_after_installation(self):
+        """Met à jour le véhicule après installation"""
+        self.ensure_one()
+        if not self.vehicle_id:
+            return
+
+        vehicle_values = {
+            'status_id': 4,  # "En attente de validation"
+            'next_service_type': 'inspection'
+        }
+
+        # Associer le réservoir installé
+        reservoir_line = self.installation_line_ids.filtered(lambda l: l.product_id.is_gpl_reservoir and l.lot_id)
+        if reservoir_line:
+            vehicle_values.update({
+                'reservoir_lot_id': reservoir_line[0].lot_id.id,
+                'installation_id': self.id
+            })
+            msg = _("Réservoir GPL %s installé.") % reservoir_line[0].lot_id.name
+            self.vehicle_id.message_post(body=msg)
+
+        self.vehicle_id.write(vehicle_values)
+
+    def _create_invoice(self):
+        """Crée une facture"""
+        self.ensure_one()
+        if not self.client_id or not self.installation_line_ids:
+            return False
+
+        try:
             invoice_vals = {
                 'move_type': 'out_invoice',
                 'partner_id': self.client_id.id,
@@ -685,64 +627,91 @@ class GplService(models.Model):
                 'invoice_line_ids': [],
             }
 
-            # Ajouter les lignes de facture
             for line in self.installation_line_ids:
-                # Trouver le compte de revenu approprié
-                account = False
-
-                # 1. D'abord essayer le compte de revenu du produit
-                if line.product_id.property_account_income_id:
-                    account = line.product_id.property_account_income_id
-                # 2. Sinon, essayer le compte de revenu de la catégorie de produit
-                elif line.product_id.categ_id.property_account_income_categ_id:
-                    account = line.product_id.categ_id.property_account_income_categ_id
-                # 3. Si toujours pas de compte, récupérer le compte de revenu par défaut
-                else:
-                    account_journal = self.env['account.journal'].search(
-                        [('type', '=', 'sale'), ('company_id', '=', self.company_id.id)], limit=1)
-                    if account_journal and account_journal.default_account_id:
-                        account = account_journal.default_account_id
-                    else:
-                        # Chercher un compte de revenus générique
-                        account = self.env['account.account'].search([
-                            ('company_id', '=', self.company_id.id),
-                            ('account_type', '=', 'income')
-                        ], limit=1)
-
-                if not account:
-                    raise UserError(
-                        _("Impossible de déterminer un compte de revenus pour le produit %s.") % line.product_id.name)
-
-                line_vals = {
+                account = self._get_income_account(line.product_id)
+                invoice_vals['invoice_line_ids'].append((0, 0, {
                     'product_id': line.product_id.id,
                     'quantity': line.product_uom_qty,
                     'name': f"{self.name}: {line.product_id.name}",
                     'price_unit': line.price_unit if line.price_unit > 0 else line.product_id.list_price,
                     'account_id': account.id
-                }
-                invoice_vals['invoice_line_ids'].append((0, 0, line_vals))
+                }))
 
-            # Créer la facture avec toutes les lignes en une seule opération
             invoice = self.env['account.move'].create(invoice_vals)
-
-            # Valider la facture
             try:
-                invoice.action_post()  # Pour Odoo 13+
-            except Exception as e:
-                _logger.warning("Impossible de valider la facture: %s", str(e))
-                # Ne pas bloquer si la validation échoue
+                invoice.action_post()
+            except:
+                pass  # Ne pas bloquer si la validation échoue
 
-            # Mettre à jour l'installation avec la référence à la facture
             self.write({'invoice_id': invoice.id})
-
             return invoice
+
         except Exception as e:
-            _logger.error("Erreur lors de la création automatique de la facture: %s", str(e))
+            _logger.error("Erreur création facture: %s", str(e))
             return False
+
+    def _get_income_account(self, product):
+        """Trouve le compte de revenu pour un produit"""
+        if product.property_account_income_id:
+            return product.property_account_income_id
+        elif product.categ_id.property_account_income_categ_id:
+            return product.categ_id.property_account_income_categ_id
+        else:
+            account_journal = self.env['account.journal'].search(
+                [('type', '=', 'sale'), ('company_id', '=', self.company_id.id)], limit=1)
+            if account_journal and account_journal.default_account_id:
+                return account_journal.default_account_id
+            else:
+                account = self.env['account.account'].search(
+                    [('company_id', '=', self.company_id.id), ('account_type', '=', 'income')], limit=1)
+                if not account:
+                    raise UserError(
+                        _("Impossible de déterminer un compte de revenus pour le produit %s.") % product.name)
+                return account
+
+    # Actions pour les vues
+    def action_view_sale_order(self):
+        self.ensure_one()
+        if not self.sale_order_id:
+            return
+        return {
+            'name': _('Bon de commande client'),
+            'view_mode': 'form',
+            'res_model': 'sale.order',
+            'res_id': self.sale_order_id.id,
+            'type': 'ir.actions.act_window',
+        }
+
+    def action_view_picking(self):
+        self.ensure_one()
+        if not self.picking_id:
+            return
+        return {
+            'name': _('Bon de livraison'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.picking',
+            'view_mode': 'form',
+            'res_id': self.picking_id.id,
+            'target': 'current',
+            'context': {'create': False}
+        }
+
+    def action_view_invoice(self):
+        self.ensure_one()
+        if not self.invoice_id:
+            return
+        return {
+            'name': _('Facture'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'view_mode': 'form',
+            'res_id': self.invoice_id.id,
+            'target': 'current',
+            'context': {'create': False}
+        }
 
     def action_view_installation_lines(self):
         self.ensure_one()
-
         return {
             'name': _('Produits utilisés'),
             'type': 'ir.actions.act_window',
@@ -751,32 +720,20 @@ class GplService(models.Model):
             'views': [(self.env.ref('gpl_fleet.view_gpl_installation_line_tree').id, 'tree')],
             'domain': [('installation_id', '=', self.id)],
             'target': 'current',
-            'context': {
-                'default_installation_id': self.id,
-                'create': True
-            }
+            'context': {'default_installation_id': self.id, 'create': True}
         }
 
     def action_invoice(self):
         self.ensure_one()
-
         if self.state != 'done':
             raise UserError(_("L'installation doit être terminée avant de pouvoir facturer."))
-
-        if not self.client_id:
-            raise UserError(_("Aucun client lié à l'installation."))
-
-        if not self.installation_line_ids:
-            raise UserError(_("Aucun produit utilisé dans l'installation."))
-
         if self.invoice_id:
             raise UserError(_("Une facture existe déjà pour cette installation."))
 
         try:
-            invoice = self._create_automatic_invoice()
-
+            invoice = self._create_invoice()
             if not invoice:
-                raise UserError(_("Impossible de créer la facture. Vérifiez la configuration des comptes."))
+                raise UserError(_("Impossible de créer la facture."))
 
             msg = _("Facture créée : %s") % invoice.name
             self.message_post(body=msg)
@@ -793,23 +750,14 @@ class GplService(models.Model):
 
     def action_cancel(self):
         for record in self:
-            try:
-                # Annuler le bon de livraison associé s'il existe
-                if record.picking_id and record.picking_id.state != 'cancel':
-                    if record.picking_id.state == 'done':
-                        raise UserError(
-                            _("Impossible d'annuler une installation avec un bon de livraison déjà validé."))
-                    record.picking_id.action_cancel()
+            if record.picking_id and record.picking_id.state != 'cancel':
+                if record.picking_id.state == 'done':
+                    raise UserError(_("Impossible d'annuler une installation avec un bon de livraison déjà validé."))
+                record.picking_id.action_cancel()
 
-                record.write({'state': 'cancel'})
-                msg = _("Installation annulée par %s") % self.env.user.name
-                record.message_post(body=msg)
-            except Exception as e:
-                if "Impossible d'annuler" not in str(e):
-                    raise UserError(_("Erreur lors de l'annulation: %s") % str(e))
-                else:
-                    raise
-
+            record.write({'state': 'cancel'})
+            msg = _("Installation annulée par %s") % self.env.user.name
+            record.message_post(body=msg)
         return True
 
     def action_draft(self):
@@ -831,54 +779,19 @@ class GplService(models.Model):
             'view_mode': 'form',
             'res_model': 'gpl.installation.add.products',
             'target': 'new',
-            'context': {
-                'default_installation_id': self.id,
-                'default_client_id': self.client_id.id if self.client_id else False,
-
-            }
-        }
-
-    def action_view_picking(self):
-        self.ensure_one()
-        if not self.picking_id:
-            return
-
-        return {
-            'name': _('Bon de livraison'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'stock.picking',
-            'view_mode': 'form',
-            'res_id': self.picking_id.id,
-            'target': 'current',
-            'context': {'create': False}
-        }
-
-    def action_view_invoice(self):
-        """Open the related invoice form view."""
-        self.ensure_one()
-        if not self.invoice_id:
-            return
-
-        return {
-            'name': _('Facture'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'account.move',
-            'view_mode': 'form',
-            'res_id': self.invoice_id.id,
-            'target': 'current',
-            'context': {'create': False}
+            'context': {'default_installation_id': self.id,
+                        'default_client_id': self.client_id.id if self.client_id else False}
         }
 
     def get_certification_text(self):
         """Récupère le texte de certification depuis les paramètres"""
-        text = self.env['ir.config_parameter'].sudo().get_param(
+        return self.env['ir.config_parameter'].sudo().get_param(
             'gpl_fleet.certification_text',
-            # Texte par défaut si aucun paramètre n'est trouvé
             """Certifions que le véhicule décrit ci-dessous a été équipé conformément aux prescriptions de l'arrêté
 du 31 Août 1983 relatif aux conditions d'équipement de surveillance et d'exploitation des installations
 de GPL équipant les véhicules automobiles."""
         )
-        return text
+
 
 class GplInstallationLine(models.Model):
     _name = 'gpl.installation.line'
@@ -889,56 +802,52 @@ class GplInstallationLine(models.Model):
     product_id = fields.Many2one('product.product', string="Produit", required=True)
     product_uom_qty = fields.Float(string="Quantité", default=1.0)
     qty_available = fields.Float(string="Stock dispo", compute="_compute_qty_available", store=False)
-    status_color = fields.Char(compute="_compute_status_color", store=False)
-    forecast_availability = fields.Float(
-        related='product_id.virtual_available',
-        string='Disponibilité prévue',
-        readonly=True,
-        store=False
-    )
     price_unit = fields.Float(string="Prix unitaire", compute="_compute_price", store=True)
     price_subtotal = fields.Float(string="Sous-total", compute="_compute_price", store=True)
     serial_number = fields.Char(string='Numéro de série')
-
     lot_id = fields.Many2one('stock.lot', string='Numéro de lot/série')
-
-    # Champ calculé pour déterminer si le produit est un réservoir GPL
-    is_gpl_reservoir = fields.Boolean(string='Est un réservoir GPL',
-                                      related='product_id.is_gpl_reservoir',
-                                      store=True)
-
+    is_gpl_reservoir = fields.Boolean(string='Est un réservoir GPL', related='product_id.is_gpl_reservoir', store=True)
     available_lot_ids = fields.Many2many('stock.lot', compute='_compute_available_lots', string='Lots disponibles')
+
+    # Champs pour améliorer l'interface utilisateur
+    tracking_required = fields.Boolean(string='Lot requis', compute='_compute_tracking_info', store=False)
+    tracking_info = fields.Char(string='Info tracking', compute='_compute_tracking_info', store=False)
+
+    @api.depends('product_id')
+    def _compute_tracking_info(self):
+        for line in self:
+            if line.product_id:
+                if line.product_id.tracking == 'serial':
+                    line.tracking_required = True
+                    line.tracking_info = "Numéro de série requis"
+                elif line.product_id.tracking == 'lot':
+                    line.tracking_required = True
+                    line.tracking_info = "Numéro de lot requis"
+                else:
+                    line.tracking_required = False
+                    line.tracking_info = ""
+            else:
+                line.tracking_required = False
+                line.tracking_info = ""
 
     @api.depends('product_id', 'installation_id.company_id')
     def _compute_available_lots(self):
         for line in self:
             if line.product_id and line.product_id.tracking != 'none':
-                # Trouver les lots disponibles pour ce produit
-                # qui sont en stock interne et pas dans l'emplacement client (ID=5)
-                quants_domain = [
+                quants = self.env['stock.quant'].search([
                     ('product_id', '=', line.product_id.id),
                     ('location_id.usage', '=', 'internal'),
-                    ('location_id.id', '!=', 5),
                     ('quantity', '>', 0)
-                ]
-
-                # Récupérer les quants qui correspondent aux critères
-                quants = self.env['stock.quant'].search(quants_domain)
-
-                # Récupérer uniquement les lots associés à ces quants
+                ])
                 lot_ids = quants.mapped('lot_id').ids
-
-                # Rechercher les lots qui correspondent aux IDs récupérés
                 lots = self.env['stock.lot'].search([
                     ('id', 'in', lot_ids),
-                    '|',
-                    ('company_id', '=', line.installation_id.company_id.id),
-                    ('company_id', '=', False)
+                    '|', ('company_id', '=', line.installation_id.company_id.id), ('company_id', '=', False)
                 ])
-
                 line.available_lot_ids = lots
             else:
                 line.available_lot_ids = False
+
     @api.depends('product_id', 'product_uom_qty')
     def _compute_price(self):
         for line in self:
@@ -949,92 +858,63 @@ class GplInstallationLine(models.Model):
                 line.price_unit = 0.0
                 line.price_subtotal = 0.0
 
-    @api.depends('product_uom_qty', 'qty_available')
-    def _compute_status_color(self):
-        for line in self:
-            if line.qty_available >= line.product_uom_qty:
-                line.status_color = 'success'
-            else:
-                line.status_color = 'danger'
-
     @api.depends('product_id')
     def _compute_qty_available(self):
         for line in self:
-            if line.product_id:
-                line.qty_available = line.product_id.qty_available
-            else:
-                line.qty_available = 0.0
-
-
-    @api.model
-    def create(self, values):
-        line = super(GplInstallationLine, self).create(values)
-
-        # Si c'est un produit de type réservoir, mettre à jour l'installation
-        if (line.product_id and line.product_id.is_gpl_reservoir and
-            line.installation_id and line.serial_number):
-            # Rechercher un lot existant
-            lot = self.env['stock.lot'].search([
-                ('name', '=', line.serial_number),
-                ('product_id', '=', line.product_id.id)
-            ], limit=1)
-
-            if lot:
-                # Si le lot existe, l'assigner à l'installation
-                line.installation_id.write({
-                    'reservoir_lot_id': lot.id
-                })
-            else:
-                # Si le lot n'existe pas, le créer
-                lot_vals = {
-                    'name': line.serial_number,
-                    'product_id': line.product_id.id,
-                    'company_id': line.installation_id.company_id.id,
-                }
-                # Si l'installation a des informations de certification, les appliquer au lot
-                if hasattr(line.installation_id, 'certification_number') and line.installation_id.certification_number:
-                    lot_vals.update({
-                        'certification_number': line.installation_id.certification_number,
-                        'certification_date': line.installation_id.certification_date,
-                    })
-                new_lot = self.env['stock.lot'].create(lot_vals)
-
-                # Assigner le nouveau lot à l'installation
-                line.installation_id.write({
-                    'reservoir_lot_id': new_lot.id,
-                    'serial_number': new_lot.name,
-                })
-
-                # Mettre à jour la ligne avec le lot créé
-                line.lot_id = new_lot.id
-
-        return line
-    @api.onchange('product_id', 'serial_number')
-    def _onchange_product_id_update_reservoir_info(self):
-        if self.product_id and self.product_id.is_gpl_reservoir and self.serial_number:
-            # Check if we have a matching reservoir in the system
-            reservoir = self.env['stock.lot'].search([
-                ('name', '=', self.serial_number),
-                ('product_id', '=', self.product_id.id)
-            ], limit=1)
-
-            # If found, update installation with reservoir details
-            if reservoir and self.installation_id:
-                self.installation_id.reservoir_lot_id = reservoir.id
-
+            line.qty_available = line.product_id.qty_available if line.product_id else 0.0
 
     @api.onchange('lot_id')
     def onchange_lot_id(self):
-        """Mettre à jour le numéro de série lorsqu'un lot est sélectionné"""
+        """Mettre à jour le numéro de série et le produit quand un lot est sélectionné"""
         if self.lot_id:
-            # Lorsqu'un lot est sélectionné, mettre à jour le numéro de série et le produit
             self.serial_number = self.lot_id.name
-            self.product_id = self.lot_id.product_id.id
+            if not self.product_id:
+                self.product_id = self.lot_id.product_id.id
 
             # Si c'est un réservoir GPL, mettre à jour l'installation
             if self.lot_id.product_id.is_gpl_reservoir and self.installation_id:
                 self.installation_id.reservoir_lot_id = self.lot_id.id
 
+    @api.onchange('product_id')
+    def onchange_product_id(self):
+        """Actions à effectuer quand le produit change"""
+        if self.product_id:
+            # Réinitialiser le lot si le produit change
+            if self.lot_id and self.lot_id.product_id.id != self.product_id.id:
+                self.lot_id = False
+                self.serial_number = False
+
+            # Si c'est un produit avec tracking, informer l'utilisateur
+            if self.product_id.tracking in ['lot', 'serial']:
+                # Le message sera affiché via la décoration dans la vue
+                pass
+
+    @api.model
+    def create(self, values):
+        line = super().create(values)
+
+        # Gestion automatique des réservoirs GPL
+        if line.product_id and line.product_id.is_gpl_reservoir and line.installation_id:
+            if line.lot_id:
+                line.installation_id.write({'reservoir_lot_id': line.lot_id.id})
+            elif line.serial_number:
+                # Rechercher ou créer le lot
+                lot = self.env['stock.lot'].search([
+                    ('name', '=', line.serial_number),
+                    ('product_id', '=', line.product_id.id)
+                ], limit=1)
+
+                if not lot:
+                    lot = self.env['stock.lot'].create({
+                        'name': line.serial_number,
+                        'product_id': line.product_id.id,
+                        'company_id': line.installation_id.company_id.id,
+                    })
+
+                line.write({'lot_id': lot.id})
+                line.installation_id.write({'reservoir_lot_id': lot.id})
+
+        return line
 
 
 class GplInstallationAddProducts(models.TransientModel):
@@ -1048,60 +928,9 @@ class GplInstallationAddProducts(models.TransientModel):
 
     @api.model
     def default_get(self, fields):
-        res = super(GplInstallationAddProducts, self).default_get(fields)
+        res = super().default_get(fields)
         if 'installation_id' in fields and not res.get('installation_id') and self.env.context.get('active_id'):
             res['installation_id'] = self.env.context.get('active_id')
         return res
 
-
-class GplInstallationProductLine(models.Model):
-    _name = 'gpl.installation.product.line'
-    _description = "Ligne de produit pour installation GPL"
-
-    installation_id = fields.Many2one('gpl.service.installation', string="Installation", required=True,
-                                      ondelete='cascade')
-    product_id = fields.Many2one('product.product', string="Produit", required=True,
-                                 domain="[('purchase_ok', '=', True)]")
-    product_uom_qty = fields.Float(string="Quantité", default=1.0)
-    price_unit = fields.Float(string="Prix unitaire", compute="_compute_price", store=True)
-    price_subtotal = fields.Float(string="Sous-total", compute="_compute_subtotal", store=True)
-
-    # Champs spécifiques pour les réservoirs GPL
-    is_gpl_reservoir = fields.Boolean(related="product_id.is_gpl_reservoir", string="Est un réservoir GPL", store=True)
-    lot_selection = fields.Selection([
-        ('existing', 'Utiliser un réservoir existant'),
-        ('new', 'Commander un nouveau réservoir')
-    ], string="Type de réservoir")
-    new_reservoir = fields.Boolean(string="Nouveau réservoir", default=False)
-    serial_number = fields.Char(string="Numéro de série")
-
-    @api.depends('product_id')
-    def _compute_price(self):
-        for line in self:
-            if line.product_id:
-                line.price_unit = line.product_id.list_price
-            else:
-                line.price_unit = 0.0
-
-    @api.depends('product_uom_qty', 'price_unit')
-    def _compute_subtotal(self):
-        for line in self:
-            line.price_subtotal = line.product_uom_qty * line.price_unit
-
-    @api.onchange('product_id')
-    def _onchange_product_id(self):
-        if self.product_id and self.product_id.is_gpl_reservoir:
-            # Si c'est un réservoir GPL, définir lot_selection par défaut
-            self.lot_selection = 'new'
-            self.new_reservoir = True
-        else:
-            self.lot_selection = False
-            self.new_reservoir = False
-            self.serial_number = False
-
-    @api.onchange('lot_selection')
-    def _onchange_lot_selection(self):
-        if self.lot_selection == 'new':
-            self.new_reservoir = True
-        else:
-            self.new_reservoir = False
+# Supprimer les modèles non utilisés GplInstallationProductLine - ils créent de la confusion

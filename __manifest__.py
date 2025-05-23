@@ -50,6 +50,7 @@
 
         'report/gpl_certificates.xml',
         'report/gpl_reports.xml',
+        'report/gpl_triennial_certificate.xml',
     ],
     'installable': True,
     'application': True,
