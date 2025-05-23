@@ -75,15 +75,6 @@
               action="action_gpl_reservoirs_expiring"
               sequence="30"/>
 
-            <!-- Actions de menu avec compteurs -->
-    <record id="menu_gpl_reservoirs_expiring_with_counter" model="ir.ui.menu">
-        <field name="name">À contrôler</field>
-        <field name="parent_id" ref="gpl_reservoir_menu_section"/>
-        <field name="action" ref="action_gpl_reservoirs_expiring"/>
-        <field name="sequence">30</field>
-        <field name="web_icon_data">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==</field>
-    </record>
-
      <!-- Ajouter le tableau de bord dans le menu -->
     <menuitem id="menu_gpl_reservoir_dashboard"
               name="Tableau de bord"

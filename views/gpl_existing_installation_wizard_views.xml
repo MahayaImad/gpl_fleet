@@ -5,27 +5,13 @@
         <field name="name">gpl.existing.installation.wizard.form</field>
         <field name="model">gpl.existing.installation.wizard</field>
         <field name="arch" type="xml">
-            <form string="Enregistrer une installation GPL existante">
+            <form string="Enregistrer un véhicule avec réservoir GPL">
                 <header>
-                    <div class="o_wizard_steps">
-                        <div t-attf-class="o_wizard_step #{step == 'client' and 'active' or 'done' if step in ['vehicle', 'reservoir', 'summary'] else ''}">
-                            <span class="o_wizard_step_number">1</span>
-                            <span class="o_wizard_step_name">Client</span>
-                        </div>
-                        <div t-attf-class="o_wizard_step #{step == 'vehicle' and 'active' or 'done' if step in ['reservoir', 'summary'] else ''}">
-                            <span class="o_wizard_step_number">2</span>
-                            <span class="o_wizard_step_name">Véhicule</span>
-                        </div>
-                        <div t-attf-class="o_wizard_step #{step == 'reservoir' and 'active' or 'done' if step == 'summary' else ''}">
-                            <span class="o_wizard_step_number">3</span>
-                            <span class="o_wizard_step_name">Réservoir</span>
-                        </div>
-                        <div t-attf-class="o_wizard_step #{step == 'summary' and 'active' or ''}">
-                            <span class="o_wizard_step_number">4</span>
-                            <span class="o_wizard_step_name">Résumé</span>
-                        </div>
-                    </div>
-                </header>
+    <field name="step" widget="statusbar"
+           statusbar_visible="client,vehicle,reservoir,summary"
+           statusbar_colors="{'client':'primary', 'vehicle':'info', 'reservoir':'warning', 'summary':'success'}"
+    />
+</header>
 
                 <sheet>
                     <field name="step" invisible="1"/>
@@ -38,22 +24,28 @@
                         </div>
 
                         <group>
-                            <field name="create_new_client" widget="radio" options="{'horizontal': true}"/>
+                            <field name="create_new_client" widget="radio" options="{'horizontal': true, 'left_label': 'Client existant', 'right_label': 'Nouveau client'}"/>
                         </group>
 
-                        <group invisible="create_new_client == True">
+                        <group invisible="create_new_client == 'new'">
                             <group string="Client existant">
-                                <field name="client_id" options="{'no_create': True}" domain="[('is_company', '=', True)]" required="create_new_client == False"/>
+                                <field name="client_id" options="{'no_create': True}" domain="[('is_company', '=', True)]" required="create_new_client == False and step == 'client'"/>
+                                <field name="client_phone" readonly="True" invisible="client_id == False"/>
+                                <field name="client_email" readonly="True" invisible="client_id == False"/>
                             </group>
                             <group>
-                                <!-- Informations en lecture seule -->
+                                <group string="Adresse" invisible="client_id == False">
+                                    <field name="client_street" readonly="True"/>
+                                    <field name="client_city" readonly="True"/>
+                                    <field name="client_zip" readonly="True"/>
+                                </group>
                             </group>
                         </group>
 
-                        <group invisible="create_new_client == False">
+                        <group invisible="create_new_client == 'existing'">
                             <group string="Nouveau client">
                                 <field name="client_is_company"/>
-                                <field name="client_name" required="create_new_client == True"/>
+                                <field name="client_name" required="create_new_client == True and step == 'client'"/>
                                 <field name="client_phone"/>
                                 <field name="client_email"/>
                             </group>
@@ -74,9 +66,9 @@
 
                         <group>
                             <group string="Identification">
-                                <field name="license_plate" required="1" placeholder="ex: 012345 125 05"/>
+                                <field name="license_plate"  placeholder="ex: 012345 125 05"/>
                                 <field name="vin_sn" placeholder="Numéro de châssis VIN"/>
-                                <field name="model_id" required="1" options="{'no_create': True}"/>
+                                <field name="model_id" options="{'no_create': True}"/>
                             </group>
                             <group string="Détails">
                                 <field name="model_year" placeholder="ex: 2020"/>
@@ -95,17 +87,15 @@
 
                         <group>
                             <group string="Réservoir">
-                                <field name="reservoir_product_id" required="1" options="{'no_create': True}"/>
-                                <field name="reservoir_serial_number" required="1" placeholder="Numéro de série du réservoir"/>
+                                <field name="reservoir_product_id" options="{'no_create': True}"/>
+                                <field name="reservoir_serial_number" placeholder="Numéro de série du réservoir"/>
                                 <field name="reservoir_capacity" readonly="1"/>
                                 <field name="reservoir_fabricant" readonly="1"/>
                             </group>
                             <group string="Certification">
                                 <field name="reservoir_certification_number" placeholder="N° de certification"/>
                                 <field name="reservoir_certification_date"/>
-                                <field name="reservoir_expiry_date" readonly="1"
-                                       decoration-warning="reservoir_expiry_date and reservoir_expiry_date &lt; (context_today() + relativedelta(months=12))"
-                                       decoration-danger="reservoir_expiry_date and reservoir_expiry_date &lt; context_today()"/>
+                                <field name="reservoir_expiry_date" readonly="1"/>
                             </group>
                         </group>
 
@@ -135,7 +125,6 @@
                                 <li>Un enregistrement client (nouveau ou mise à jour)</li>
                                 <li>Un véhicule GPL</li>
                                 <li>Un lot de réservoir GPL avec suivi des dates</li>
-                                <li>Un enregistrement d'installation terminée</li>
                             </ul>
                         </div>
 
@@ -168,9 +157,7 @@
                                 <div invisible="reservoir_certification_date == False"><field name="reservoir_certification_date" readonly="1" nolabel="1"/></div>
                                 <label for="reservoir_expiry_date" string="Date expiration" invisible="reservoir_expiry_date == False"/>
                                 <div invisible="reservoir_expiry_date == False">
-                                    <field name="reservoir_expiry_date" readonly="1" nolabel="1"
-                                           decoration-warning="reservoir_expiry_date and reservoir_expiry_date &lt; (context_today() + relativedelta(months=12))"
-                                           decoration-danger="reservoir_expiry_date and reservoir_expiry_date &lt; context_today()"/>
+                                    <field name="reservoir_expiry_date" readonly="1" nolabel="1"/>
                                 </div>
                             </group>
                             <group string="Installation">
@@ -201,7 +188,7 @@
         </field>
     </record>
 
-    <!-- Vue formulaire pour le message de succès -->
+    <!-- Les autres vues restent inchangées -->
     <record id="view_gpl_existing_installation_success_form" model="ir.ui.view">
         <field name="name">gpl.existing.installation.success.form</field>
         <field name="model">gpl.existing.installation.success</field>
@@ -224,7 +211,7 @@
                 <footer class="text-center">
                     <button string="Voir le véhicule" name="action_view_vehicle" type="object"
                             class="btn-primary"/>
-                    <button string="Voir l'installation" name="action_view_installation" type="object"
+                    <button string="Voir le réservoir" name="action_view_reservoir" type="object"
                             class="btn-secondary"/>
                     <button string="Voir le client" name="action_view_client" type="object"
                             class="btn-secondary"/>
@@ -234,7 +221,6 @@
         </field>
     </record>
 
-    <!-- Action pour lancer le wizard -->
     <record id="action_gpl_existing_installation_wizard" model="ir.actions.act_window">
         <field name="name">Enregistrer installation existante</field>
         <field name="res_model">gpl.existing.installation.wizard</field>

@@ -18,10 +18,12 @@ class GplExistingInstallationWizard(models.TransientModel):
 
     # === INFORMATIONS CLIENT ===
     client_id = fields.Many2one('res.partner', string='Client existant')
-    create_new_client = fields.Boolean(string='Créer un nouveau client', default=True)
-
+    create_new_client = fields.Selection([
+        ('new', 'Nouveau client'),
+        ('existing', 'Client existant'),
+    ], string="Client :", default='new')
     # Champs pour nouveau client
-    client_name = fields.Char(string='Nom / Raison sociale', required=True)
+    client_name = fields.Char(string='Nom / Raison sociale')
     client_phone = fields.Char(string='Téléphone')
     client_email = fields.Char(string='Email')
     client_street = fields.Char(string='Adresse')
@@ -30,9 +32,9 @@ class GplExistingInstallationWizard(models.TransientModel):
     client_is_company = fields.Boolean(string='Est une entreprise')
 
     # === INFORMATIONS VÉHICULE ===
-    license_plate = fields.Char(string='Matricule', required=True)
+    license_plate = fields.Char(string='Matricule')
     vin_sn = fields.Char(string='Numéro de châssis (VIN)')
-    model_id = fields.Many2one('fleet.vehicle.model', string='Modèle', required=True)
+    model_id = fields.Many2one('fleet.vehicle.model', string='Modèle')
     model_year = fields.Char(string='Année')
     color = fields.Char(string='Couleur')
     acquisition_date = fields.Date(string="Date d'immatriculation", default=fields.Date.today)
@@ -41,10 +43,9 @@ class GplExistingInstallationWizard(models.TransientModel):
     reservoir_product_id = fields.Many2one(
         'product.product',
         string='Type de réservoir',
-        domain="[('is_gpl_reservoir', '=', True)]",
-        required=True
+        domain="[('is_gpl_reservoir', '=', True)]"
     )
-    reservoir_serial_number = fields.Char(string='Numéro de série du réservoir', required=True)
+    reservoir_serial_number = fields.Char(string='Numéro de série du réservoir')
     reservoir_certification_number = fields.Char(string='Numéro de certification')
     reservoir_certification_date = fields.Date(string='Date de certification/épreuve')
     reservoir_capacity = fields.Float(string='Capacité (litres)', related='reservoir_product_id.capacity',
@@ -133,17 +134,34 @@ class GplExistingInstallationWizard(models.TransientModel):
                 ) % (existing_reservoir.name, existing_reservoir.product_id.name))
 
     def action_next_step(self):
-        """Passe à l'étape suivante"""
+        """Passe à l'étape suivante après validation"""
         self.ensure_one()
 
         if self.step == 'client':
-            self._validate_client_info()
+            # Valider les informations client
+            if self.create_new_client and not self.client_name:
+                raise ValidationError(_("Le nom du client est requis."))
+            elif not self.create_new_client and not self.client_id:
+                raise ValidationError(_("Veuillez sélectionner un client existant."))
+            # Si la validation réussit, passer à l'étape suivante
             self.step = 'vehicle'
+
         elif self.step == 'vehicle':
-            self._validate_vehicle_info()
+            # Valider les informations du véhicule
+            if not self.license_plate:
+                raise ValidationError(_("Le matricule du véhicule est requis."))
+            if not self.model_id:
+                raise ValidationError(_("Le modèle du véhicule est requis."))
+            # Si la validation réussit, passer à l'étape suivante
             self.step = 'reservoir'
+
         elif self.step == 'reservoir':
-            self._validate_reservoir_info()
+            # Valider les informations du réservoir
+            if not self.reservoir_product_id:
+                raise ValidationError(_("Le type de réservoir est requis."))
+            if not self.reservoir_serial_number:
+                raise ValidationError(_("Le numéro de série du réservoir est requis."))
+            # Si la validation réussit, passer à l'étape suivante
             self.step = 'summary'
 
         return self._return_wizard_action()
@@ -198,10 +216,7 @@ class GplExistingInstallationWizard(models.TransientModel):
             # 3. Créer le réservoir
             reservoir = self._create_reservoir()
 
-            # 4. Créer l'installation
-            installation = self._create_installation(vehicle, reservoir)
-
-            # 5. Lier le réservoir au véhicule
+            # 4. Lier le réservoir au véhicule
             vehicle.write({'reservoir_lot_id': reservoir.id})
             reservoir.write({'vehicle_id': vehicle.id})
 
@@ -209,8 +224,7 @@ class GplExistingInstallationWizard(models.TransientModel):
             self.write({
                 'created_client_id': client.id,
                 'created_vehicle_id': vehicle.id,
-                'created_reservoir_id': reservoir.id,
-                'created_installation_id': installation.id
+                'created_reservoir_id': reservoir.id
             })
 
             return self._show_success_message()
@@ -327,17 +341,15 @@ class GplExistingInstallationWizard(models.TransientModel):
             "Installation existante enregistrée avec succès !\n\n"
             "• Client: %s\n"
             "• Véhicule: %s\n"
-            "• Réservoir: %s\n"
-            "• Installation: %s"
+            "• Réservoir: %s"
         ) % (
                       self.created_client_id.name,
                       self.created_vehicle_id.name,
-                      self.created_reservoir_id.name,
-                      self.created_installation_id.name
+                      self.created_reservoir_id.name
                   )
 
         return {
-            'name': _('Installation créée'),
+            'name': _('Enregisrement créée'),
             'type': 'ir.actions.act_window',
             'res_model': 'gpl.existing.installation.success',
             'view_mode': 'form',
@@ -345,7 +357,6 @@ class GplExistingInstallationWizard(models.TransientModel):
             'context': {
                 'default_message': message,
                 'default_vehicle_id': self.created_vehicle_id.id,
-                'default_installation_id': self.created_installation_id.id,
                 'default_client_id': self.created_client_id.id,
             }
         }
@@ -361,6 +372,22 @@ class GplExistingInstallationWizard(models.TransientModel):
             'target': 'new',
         }
 
+    @api.onchange('create_new_client')
+    def _onchange_create_new_client(self):
+        """Réinitialise les champs appropriés lorsque le type de client change"""
+        if self.create_new_client:
+            # Si on passe à "Nouveau client", on efface le client sélectionné
+            self.client_id = False
+        else:
+            # Si on passe à "Client existant", on efface les champs de nouveau client
+            self.client_name = False
+            self.client_phone = False
+            self.client_email = False
+            self.client_street = False
+            self.client_city = False
+            self.client_zip = False
+            self.client_is_company = False
+
 
 class GplExistingInstallationSuccess(models.TransientModel):
     _name = 'gpl.existing.installation.success'
@@ -368,7 +395,6 @@ class GplExistingInstallationSuccess(models.TransientModel):
 
     message = fields.Text(string='Message', readonly=True)
     vehicle_id = fields.Many2one('gpl.vehicle', string='Véhicule créé')
-    installation_id = fields.Many2one('gpl.service.installation', string='Installation créée')
     client_id = fields.Many2one('res.partner', string='Client')
 
     def action_view_vehicle(self):
@@ -382,13 +408,13 @@ class GplExistingInstallationSuccess(models.TransientModel):
             'target': 'current',
         }
 
-    def action_view_installation(self):
-        """Ouvre l'installation créée"""
+    def action_view_reservoir(self):
+        """Ouvre le réservoir créé"""
         return {
-            'name': _('Installation'),
+            'name': _('Réservoir'),
             'type': 'ir.actions.act_window',
-            'res_model': 'gpl.service.installation',
-            'res_id': self.installation_id.id,
+            'res_model': 'stock.lot',
+            'res_id': self.reservoir_id.id,
             'view_mode': 'form',
             'target': 'current',
         }
