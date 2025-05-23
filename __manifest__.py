@@ -37,6 +37,7 @@
         'security/gpl_security.xml',
         'data/ir_sequence_data.xml',
 
+        # Vues principales
         'views/fleet_vehicle_model_views.xml',
         'views/gpl_vehicle_views.xml',
         'views/gpl_installation_views.xml',
@@ -44,10 +45,16 @@
         'views/gpl_inspection_views.xml',
         'views/gpl_reservoir_testing_views.xml',
 
+        # Vues des réservoirs
+        'views/gpl_reservoir_views.xml',
+        'views/gpl_existing_installation_wizard_views.xml',
+
+        # Configuration et autres
         'views/product_template.xml',
         'views/res_config_settings_views.xml',
         'views/gpl_menus.xml',
 
+        # Rapports
         'report/gpl_certificates.xml',
         'report/gpl_reports.xml',
         'report/gpl_triennial_certificate.xml',

@@ -11,3 +11,4 @@ from . import gpl_service
 from . import gpl_repair
 from . import gpl_inspection
 from . import gpl_reservoir_testing
+from . import gpl_existing_installation_wizard

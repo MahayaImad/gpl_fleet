@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vue formulaire spécialisée pour les réservoirs GPL -->
+    <record id="view_stock_lot_gpl_reservoir_form" model="ir.ui.view">
+        <field name="name">stock.lot.gpl.reservoir.form</field>
+        <field name="model">stock.lot</field>
+        <field name="inherit_id" ref="stock.view_production_lot_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <field name="is_gpl_reservoir" invisible="1"/>
+            </xpath>
+
+           <!-- <xpath expr="//group[@name='main']" position="after">
+                <group string="Informations GPL" invisible="is_gpl_reservoir == False">
+                    <group>
+                        <field name="certification_number"/>
+                        <field name="certification_date"/>
+                        <field name="expiry_date" readonly="1"/>
+                        <field name="state" widget="badge"
+                               decoration-success="state == 'valid'"
+                               decoration-warning="state == 'expiring_soon'"
+                               decoration-danger="state == 'expired'"/>
+                    </group>
+                    <group>
+                        <field name="vehicle_id" options="{'no_create': True}"/>
+                        <field name="product_id" readonly="1" invisible="1"/>
+                    </group>
+                </group>
+            </xpath>-->
+        </field>
+    </record>
+
+    <!-- Vue liste spécialisée pour les réservoirs GPL -->
+    <record id="view_stock_lot_gpl_reservoir_tree" model="ir.ui.view">
+        <field name="name">stock.lot.gpl.reservoir.tree</field>
+        <field name="model">stock.lot</field>
+        <field name="arch" type="xml">
+            <tree string="Réservoirs GPL"
+                  decoration-success="state == 'valid'"
+                  decoration-warning="state == 'expiring_soon'"
+                  decoration-danger="state == 'expired'">
+                <field name="name" string="N° Série"/>
+                <field name="product_id" string="Modèle de réservoir"/>
+                <field name="certification_number"/>
+                <field name="certification_date"/>
+                <field name="expiry_date"/>
+                <field name="state" widget="badge"/>
+                <field name="vehicle_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="is_gpl_reservoir" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vue recherche pour les réservoirs GPL -->
+    <record id="view_stock_lot_gpl_reservoir_search" model="ir.ui.view">
+        <field name="name">stock.lot.gpl.reservoir.search</field>
+        <field name="model">stock.lot</field>
+        <field name="arch" type="xml">
+            <search string="Recherche réservoirs GPL">
+                <field name="name" string="Numéro de série"/>
+                <field name="product_id" string="Modèle"/>
+                <field name="certification_number"/>
+                <field name="vehicle_id"/>
+                <separator/>
+                <filter string="Valides" name="valid" domain="[('state', '=', 'valid')]"/>
+                <filter string="Expiration proche" name="expiring_soon" domain="[('state', '=', 'expiring_soon')]"/>
+                <filter string="Expirés" name="expired" domain="[('state', '=', 'expired')]"/>
+                <separator/>
+                <filter string="Installés" name="installed" domain="[('vehicle_id', '!=', False)]"/>
+                <filter string="En stock" name="in_stock" domain="[('vehicle_id', '=', False)]"/>
+                <separator/>
+                <filter string="À contrôler dans 6 mois" name="control_6_months"
+                        domain="[('expiry_date', '&lt;=', (context_today() + relativedelta(months=6)).strftime('%Y-%m-%d')), ('expiry_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="1" string="Regrouper par">
+                    <filter string="État" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Modèle" name="group_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Véhicule" name="group_vehicle" context="{'group_by': 'vehicle_id'}"/>
+                    <filter string="Mois d'expiration" name="group_expiry" context="{'group_by': 'expiry_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Vue kanban pour les réservoirs GPL -->
+    <record id="view_stock_lot_gpl_reservoir_kanban" model="ir.ui.view">
+        <field name="name">stock.lot.gpl.reservoir.kanban</field>
+        <field name="model">stock.lot</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="certification_date"/>
+                <field name="expiry_date"/>
+                <field name="state"/>
+                <field name="vehicle_id"/>
+                <field name="certification_number"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click
+                                          #{record.state.raw_value == 'valid' ? 'border-success' :
+                                            record.state.raw_value == 'expiring_soon' ? 'border-warning' : 'border-danger'}">
+                            <div class="oe_kanban_content">
+                                <div class="o_kanban_record_top">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title">
+                                            <i class="fa fa-fire"></i>
+                                            <t t-esc="record.name.value"/>
+                                        </strong>
+                                        <small class="o_kanban_record_subtitle">
+                                            <t t-esc="record.product_id.value"/>
+                                        </small>
+                                    </div>
+                                    <span t-attf-class="badge #{record.state.raw_value == 'valid' ? 'bg-success' :
+                                                              record.state.raw_value == 'expiring_soon' ? 'bg-warning' : 'bg-danger'}">
+                                        <t t-esc="record.state.value"/>
+                                    </span>
+                                </div>
+                                <div class="o_kanban_record_body">
+                                    <div t-if="record.certification_number.raw_value">
+                                        <strong>Certification:</strong> <t t-esc="record.certification_number.value"/>
+                                    </div>
+                                    <div t-if="record.expiry_date.raw_value">
+                                        <strong>Expire le:</strong> <t t-esc="record.expiry_date.value"/>
+                                    </div>
+                                    <div t-if="record.vehicle_id.raw_value">
+                                        <strong>Installé sur:</strong> <t t-esc="record.vehicle_id.value"/>
+                                    </div>
+                                    <div t-if="!record.vehicle_id.raw_value" class="text-muted">
+                                        <i class="fa fa-warehouse"></i> En stock
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Vue pivot pour analyses -->
+    <record id="view_stock_lot_gpl_reservoir_pivot" model="ir.ui.view">
+        <field name="name">stock.lot.gpl.reservoir.pivot</field>
+        <field name="model">stock.lot</field>
+        <field name="arch" type="xml">
+            <pivot string="Analyse des réservoirs GPL">
+                <field name="product_id" type="row"/>
+                <field name="state" type="col"/>
+                <field name="expiry_date" type="row" interval="month"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Action principale pour les réservoirs GPL -->
+    <record id="action_gpl_reservoirs" model="ir.actions.act_window">
+        <field name="name">Réservoirs GPL</field>
+        <field name="res_model">stock.lot</field>
+        <field name="view_mode">kanban,tree,form,pivot</field>
+        <field name="domain">[('is_gpl_reservoir', '=', True)]</field>
+        <field name="context">{'search_default_group_state': 1}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                     (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_stock_lot_gpl_reservoir_kanban')}),
+                                     (0, 0, {'view_mode': 'tree', 'view_id': ref('view_stock_lot_gpl_reservoir_tree')}),
+                                     (0, 0, {'view_mode': 'form', 'view_id': ref('view_stock_lot_gpl_reservoir_form')}),
+                                     (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_stock_lot_gpl_reservoir_pivot')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucun réservoir GPL trouvé
+            </p>
+            <p>
+                Les réservoirs GPL sont automatiquement créés lors des installations.
+                Vous pouvez également enregistrer des installations existantes.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action pour réservoirs expirant bientôt -->
+    <record id="action_gpl_reservoirs_expiring" model="ir.actions.act_window">
+        <field name="name">Réservoirs à contrôler</field>
+        <field name="res_model">stock.lot</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('is_gpl_reservoir', '=', True), ('state', 'in', ['expiring_soon', 'expired'])]</field>
+        <field name="context">{'search_default_expiring_soon': 1}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                     (0, 0, {'view_mode': 'tree', 'view_id': ref('view_stock_lot_gpl_reservoir_tree')}),
+                                     (0, 0, {'view_mode': 'form', 'view_id': ref('view_stock_lot_gpl_reservoir_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucun réservoir à contrôler
+            </p>
+            <p>
+                Cette vue affiche les réservoirs GPL qui arrivent à expiration et nécessitent une réépreuve.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action pour réservoirs en stock -->
+    <record id="action_gpl_reservoirs_stock" model="ir.actions.act_window">
+        <field name="name">Réservoirs en stock</field>
+        <field name="res_model">stock.lot</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('is_gpl_reservoir', '=', True), ('vehicle_id', '=', False)]</field>
+        <field name="context">{'search_default_valid': 1}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                                     (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_stock_lot_gpl_reservoir_kanban')}),
+                                     (0, 0, {'view_mode': 'tree', 'view_id': ref('view_stock_lot_gpl_reservoir_tree')}),
+                                     (0, 0, {'view_mode': 'form', 'view_id': ref('view_stock_lot_gpl_reservoir_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucun réservoir en stock
+            </p>
+            <p>
+                Cette vue affiche les réservoirs GPL disponibles en stock pour installation.
+            </p>
+        </field>
+    </record>
+
+
+
+
+    <!-- Vue tableau de bord pour les réservoirs -->
+<record id="view_gpl_reservoir_dashboard" model="ir.ui.view">
+    <field name="name">gpl.reservoir.dashboard</field>
+    <field name="model">stock.lot</field>
+    <field name="arch" type="xml">
+        <kanban class="o_kanban_dashboard">
+            <field name="id"/>
+            <field name="state"/>
+            <!--<templates>
+                <t t-name="kanban-box">
+                    <div class="container o_kanban_card_content">
+                        <div class="row">
+                            <div class="col-12">
+                                <view type="graph" ref="view_stock_lot_gpl_reservoir_graph"/>
+                                <div class="o_kanban_primary_left">
+                                    <div class="o_aggregate">
+                                        <span class="o_value"><field name="id" widget="statinfo" string="Total réservoirs"/></span>
+                                        <span class="o_label">Total réservoirs</span>
+                                    </div>
+                                    <div class="o_aggregate" domain="[('state', '=', 'valid')]">
+                                        <span class="o_value"><field name="id" widget="statinfo"/></span>
+                                        <span class="o_label">Valides</span>
+                                    </div>
+                                    <div class="o_aggregate" domain="[('state', '=', 'expiring_soon')]">
+                                        <span class="o_value"><field name="id" widget="statinfo"/></span>
+                                        <span class="o_label">Expiration proche</span>
+                                    </div>
+                                    <div class="o_aggregate" domain="[('state', '=', 'expired')]">
+                                        <span class="o_value"><field name="id" widget="statinfo"/></span>
+                                        <span class="o_label">Expirés</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </templates> -->
+        </kanban>
+    </field>
+</record>
+
+    <!-- Vue graphique pour les réservoirs -->
+    <record id="view_stock_lot_gpl_reservoir_graph" model="ir.ui.view">
+        <field name="name">stock.lot.gpl.reservoir.graph</field>
+        <field name="model">stock.lot</field>
+        <field name="arch" type="xml">
+            <graph string="Évolution des réservoirs GPL" type="line">
+                <field name="certification_date" type="row" interval="month"/>
+                <field name="state" type="col"/>
+                <field name="id" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Action pour le tableau de bord des réservoirs -->
+    <record id="action_gpl_reservoir_dashboard" model="ir.actions.act_window">
+        <field name="name">Tableau de bord réservoirs</field>
+        <field name="res_model">stock.lot</field>
+        <field name="view_mode">dashboard,graph,pivot</field>
+        <field name="domain">[('product_id.is_gpl_reservoir', '=', True)]</field>
+        <!--<field name="view_ids" eval="[(5, 0, 0),
+                                     (0, 0, {'view_mode': 'dashboard', 'view_id': ref('view_gpl_reservoir_dashboard')}),
+                                     (0, 0, {'view_mode': 'graph', 'view_id': ref('view_stock_lot_gpl_reservoir_graph')}),
+                                     (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_stock_lot_gpl_reservoir_pivot')})]"/> -->
+    </record>
+
+
+    <!-- Action automatique pour les alertes de réservoirs -->
+    <record id="ir_cron_gpl_reservoir_alerts" model="ir.cron">
+        <field name="name">Alertes réservoirs GPL</field>
+        <field name="model_id" ref="model_stock_lot"/>
+        <field name="state">code</field>
+        <field name="code">
+# Vérifie les réservoirs expirant bientôt et envoie des alertes
+reservoirs = env['stock.lot'].search([
+    ('product_id.is_gpl_reservoir', '=', True),
+    ('state', 'in', ['expiring_soon', 'expired'])
+])
+
+if reservoirs and env['ir.config_parameter'].sudo().get_param('gpl_fleet.enable_reservoir_alerts', 'True').lower() == 'true':
+    # Logique d'alerte à implémenter
+    pass
+        </field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Rapports spécialisés pour les réservoirs -->
+    <record id="action_report_gpl_reservoir_list" model="ir.actions.report">
+        <field name="name">Liste des réservoirs GPL</field>
+        <field name="model">stock.lot</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">gpl_fleet.report_gpl_reservoir_list</field>
+        <field name="report_file">gpl_fleet.report_gpl_reservoir_list</field>
+        <field name="print_report_name">'Liste Réservoirs GPL - %s' % (datetime.now().strftime('%Y%m%d'))</field>
+        <field name="binding_model_id" ref="stock.model_stock_lot"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Modèle de rapport pour la liste des réservoirs -->
+    <template id="report_gpl_reservoir_list">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Liste des réservoirs GPL</h2>
+                        <t t-if="o">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>N° Série</th>
+                                        <th>Modèle</th>
+                                        <th>Certification</th>
+                                        <th>Expiration</th>
+                                        <th>État</th>
+                                        <th>Véhicule</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="docs" t-as="reservoir">
+                                        <td><span t-field="reservoir.name"/></td>
+                                        <td><span t-field="reservoir.product_id.name"/></td>
+                                        <td><span t-field="reservoir.certification_date"/></td>
+                                        <td><span t-field="reservoir.expiry_date"/></td>
+                                        <td><span t-field="reservoir.state"/></td>
+                                        <td><span t-field="reservoir.vehicle_id.license_plate"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>
+

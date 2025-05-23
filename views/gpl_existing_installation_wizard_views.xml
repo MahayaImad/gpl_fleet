@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vue formulaire pour le wizard d'installation existante -->
+    <record id="view_gpl_existing_installation_wizard_form" model="ir.ui.view">
+        <field name="name">gpl.existing.installation.wizard.form</field>
+        <field name="model">gpl.existing.installation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Enregistrer une installation GPL existante">
+                <header>
+                    <div class="o_wizard_steps">
+                        <div t-attf-class="o_wizard_step #{step == 'client' and 'active' or 'done' if step in ['vehicle', 'reservoir', 'summary'] else ''}">
+                            <span class="o_wizard_step_number">1</span>
+                            <span class="o_wizard_step_name">Client</span>
+                        </div>
+                        <div t-attf-class="o_wizard_step #{step == 'vehicle' and 'active' or 'done' if step in ['reservoir', 'summary'] else ''}">
+                            <span class="o_wizard_step_number">2</span>
+                            <span class="o_wizard_step_name">Véhicule</span>
+                        </div>
+                        <div t-attf-class="o_wizard_step #{step == 'reservoir' and 'active' or 'done' if step == 'summary' else ''}">
+                            <span class="o_wizard_step_number">3</span>
+                            <span class="o_wizard_step_name">Réservoir</span>
+                        </div>
+                        <div t-attf-class="o_wizard_step #{step == 'summary' and 'active' or ''}">
+                            <span class="o_wizard_step_number">4</span>
+                            <span class="o_wizard_step_name">Résumé</span>
+                        </div>
+                    </div>
+                </header>
+
+                <sheet>
+                    <field name="step" invisible="1"/>
+
+                    <!-- ÉTAPE 1: INFORMATIONS CLIENT -->
+                    <div invisible="step != 'client'">
+                        <div class="oe_title">
+                            <h1>Informations du client</h1>
+                            <p>Sélectionnez un client existant ou créez un nouveau client pour cette installation GPL.</p>
+                        </div>
+
+                        <group>
+                            <field name="create_new_client" widget="radio" options="{'horizontal': true}"/>
+                        </group>
+
+                        <group invisible="create_new_client == True">
+                            <group string="Client existant">
+                                <field name="client_id" options="{'no_create': True}" domain="[('is_company', '=', True)]" required="create_new_client == False"/>
+                            </group>
+                            <group>
+                                <!-- Informations en lecture seule -->
+                            </group>
+                        </group>
+
+                        <group invisible="create_new_client == False">
+                            <group string="Nouveau client">
+                                <field name="client_is_company"/>
+                                <field name="client_name" required="create_new_client == True"/>
+                                <field name="client_phone"/>
+                                <field name="client_email"/>
+                            </group>
+                            <group string="Adresse">
+                                <field name="client_street"/>
+                                <field name="client_city"/>
+                                <field name="client_zip"/>
+                            </group>
+                        </group>
+                    </div>
+
+                    <!-- ÉTAPE 2: INFORMATIONS VÉHICULE -->
+                    <div invisible="step != 'vehicle'">
+                        <div class="oe_title">
+                            <h1>Informations du véhicule</h1>
+                            <p>Saisissez les détails du véhicule équipé GPL.</p>
+                        </div>
+
+                        <group>
+                            <group string="Identification">
+                                <field name="license_plate" required="1" placeholder="ex: 012345 125 05"/>
+                                <field name="vin_sn" placeholder="Numéro de châssis VIN"/>
+                                <field name="model_id" required="1" options="{'no_create': True}"/>
+                            </group>
+                            <group string="Détails">
+                                <field name="model_year" placeholder="ex: 2020"/>
+                                <field name="color" placeholder="ex: Blanc"/>
+                                <field name="acquisition_date"/>
+                            </group>
+                        </group>
+                    </div>
+
+                    <!-- ÉTAPE 3: INFORMATIONS RÉSERVOIR -->
+                    <div invisible="step != 'reservoir'">
+                        <div class="oe_title">
+                            <h1>Informations du réservoir GPL</h1>
+                            <p>Saisissez les détails du réservoir GPL installé sur le véhicule.</p>
+                        </div>
+
+                        <group>
+                            <group string="Réservoir">
+                                <field name="reservoir_product_id" required="1" options="{'no_create': True}"/>
+                                <field name="reservoir_serial_number" required="1" placeholder="Numéro de série du réservoir"/>
+                                <field name="reservoir_capacity" readonly="1"/>
+                                <field name="reservoir_fabricant" readonly="1"/>
+                            </group>
+                            <group string="Certification">
+                                <field name="reservoir_certification_number" placeholder="N° de certification"/>
+                                <field name="reservoir_certification_date"/>
+                                <field name="reservoir_expiry_date" readonly="1"
+                                       decoration-warning="reservoir_expiry_date and reservoir_expiry_date &lt; (context_today() + relativedelta(months=12))"
+                                       decoration-danger="reservoir_expiry_date and reservoir_expiry_date &lt; context_today()"/>
+                            </group>
+                        </group>
+
+                        <group>
+                            <group string="Installation">
+                                <field name="installation_date"/>
+                                <field name="external_installer" placeholder="Nom de l'installateur externe"/>
+                                <field name="external_certificate" placeholder="N° de certificat externe"/>
+                            </group>
+                        </group>
+
+                        <group string="Notes">
+                            <field name="installation_notes" nolabel="1" placeholder="Notes complémentaires sur l'installation existante..."/>
+                        </group>
+                    </div>
+
+                    <!-- ÉTAPE 4: RÉSUMÉ -->
+                    <div invisible="step != 'summary'">
+                        <div class="oe_title">
+                            <h1>Résumé de l'installation</h1>
+                            <p>Vérifiez les informations avant de créer l'enregistrement.</p>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <strong>Récapitulatif des données qui seront créées :</strong>
+                            <ul>
+                                <li>Un enregistrement client (nouveau ou mise à jour)</li>
+                                <li>Un véhicule GPL</li>
+                                <li>Un lot de réservoir GPL avec suivi des dates</li>
+                                <li>Un enregistrement d'installation terminée</li>
+                            </ul>
+                        </div>
+
+                        <group>
+                            <group string="Client">
+                                <label for="client_name" string="Nom"/>
+                                <div><field name="client_name" readonly="1" nolabel="1"/></div>
+                                <label for="client_phone" string="Téléphone" invisible="client_phone == False"/>
+                                <div invisible="client_phone == False"><field name="client_phone" readonly="1" nolabel="1"/></div>
+                                <label for="client_email" string="Email" invisible="client_email == False"/>
+                                <div invisible="client_email == False"><field name="client_email" readonly="1" nolabel="1"/></div>
+                            </group>
+                            <group string="Véhicule">
+                                <label for="license_plate" string="Matricule"/>
+                                <div><field name="license_plate" readonly="1" nolabel="1"/></div>
+                                <label for="model_id" string="Modèle"/>
+                                <div><field name="model_id" readonly="1" nolabel="1"/></div>
+                                <label for="vin_sn" string="VIN" invisible="vin_sn == False"/>
+                                <div invisible="vin_sn == False"><field name="vin_sn" readonly="1" nolabel="1"/></div>
+                            </group>
+                        </group>
+
+                        <group>
+                            <group string="Réservoir GPL">
+                                <label for="reservoir_product_id" string="Type"/>
+                                <div><field name="reservoir_product_id" readonly="1" nolabel="1"/></div>
+                                <label for="reservoir_serial_number" string="N° Série"/>
+                                <div><field name="reservoir_serial_number" readonly="1" nolabel="1"/></div>
+                                <label for="reservoir_certification_date" string="Date certification" invisible="reservoir_certification_date == False"/>
+                                <div invisible="reservoir_certification_date == False"><field name="reservoir_certification_date" readonly="1" nolabel="1"/></div>
+                                <label for="reservoir_expiry_date" string="Date expiration" invisible="reservoir_expiry_date == False"/>
+                                <div invisible="reservoir_expiry_date == False">
+                                    <field name="reservoir_expiry_date" readonly="1" nolabel="1"
+                                           decoration-warning="reservoir_expiry_date and reservoir_expiry_date &lt; (context_today() + relativedelta(months=12))"
+                                           decoration-danger="reservoir_expiry_date and reservoir_expiry_date &lt; context_today()"/>
+                                </div>
+                            </group>
+                            <group string="Installation">
+                                <label for="installation_date" string="Date"/>
+                                <div><field name="installation_date" readonly="1" nolabel="1"/></div>
+                                <label for="external_installer" string="Installateur" invisible="external_installer == False"/>
+                                <div invisible="external_installer == False"><field name="external_installer" readonly="1" nolabel="1"/></div>
+                            </group>
+                        </group>
+
+                        <div invisible="installation_notes == False">
+                            <label for="installation_notes" string="Notes"/>
+                            <field name="installation_notes" readonly="1" nolabel="1"/>
+                        </div>
+                    </div>
+                </sheet>
+
+                <footer>
+                    <button string="Précédent" name="action_previous_step" type="object"
+                            class="btn-secondary" invisible="step == 'client'"/>
+                    <button string="Suivant" name="action_next_step" type="object"
+                            class="btn-primary" invisible="step == 'summary'"/>
+                    <button string="Créer l'installation" name="action_create_installation" type="object"
+                            class="btn-primary" invisible="step != 'summary'"/>
+                    <button string="Annuler" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vue formulaire pour le message de succès -->
+    <record id="view_gpl_existing_installation_success_form" model="ir.ui.view">
+        <field name="name">gpl.existing.installation.success.form</field>
+        <field name="model">gpl.existing.installation.success</field>
+        <field name="arch" type="xml">
+            <form string="Installation enregistrée">
+                <sheet>
+                    <div class="oe_title text-center">
+                        <h1><i class="fa fa-check-circle text-success"/> Installation enregistrée</h1>
+                    </div>
+
+                    <div class="alert alert-success text-center">
+                        <field name="message" readonly="1" nolabel="1"/>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <p><strong>Que souhaitez-vous faire maintenant ?</strong></p>
+                    </div>
+                </sheet>
+
+                <footer class="text-center">
+                    <button string="Voir le véhicule" name="action_view_vehicle" type="object"
+                            class="btn-primary"/>
+                    <button string="Voir l'installation" name="action_view_installation" type="object"
+                            class="btn-secondary"/>
+                    <button string="Voir le client" name="action_view_client" type="object"
+                            class="btn-secondary"/>
+                    <button string="Fermer" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action pour lancer le wizard -->
+    <record id="action_gpl_existing_installation_wizard" model="ir.actions.act_window">
+        <field name="name">Enregistrer installation existante</field>
+        <field name="res_model">gpl.existing.installation.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="help" type="html">
+            <p>
+                Utilisez cet assistant pour enregistrer une installation GPL existante.
+                Cela vous permet d'intégrer des clients qui possèdent déjà un véhicule équipé GPL.
+            </p>
+        </field>
+    </record>
+</odoo>

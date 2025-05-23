@@ -50,6 +50,54 @@
               action="action_gpl_reservoir_testing"
               sequence="40"/>
 
+    <!-- Sous-menu Réservoirs GPL dans Stock -->
+    <menuitem name="Réservoirs GPL"
+              parent="gpl_menu_root"
+              id="gpl_reservoir_menu_section"
+              sequence="3"/>
+
+    <!-- Sous-menus des réservoirs -->
+    <menuitem id="menu_gpl_reservoirs_all"
+              name="Tous les réservoirs"
+              parent="gpl_reservoir_menu_section"
+              action="action_gpl_reservoirs"
+              sequence="10"/>
+
+    <menuitem id="menu_gpl_reservoirs_stock"
+              name="En stock"
+              parent="gpl_reservoir_menu_section"
+              action="action_gpl_reservoirs_stock"
+              sequence="20"/>
+
+    <menuitem id="menu_gpl_reservoirs_expiring"
+              name="À contrôler"
+              parent="gpl_reservoir_menu_section"
+              action="action_gpl_reservoirs_expiring"
+              sequence="30"/>
+
+            <!-- Actions de menu avec compteurs -->
+    <record id="menu_gpl_reservoirs_expiring_with_counter" model="ir.ui.menu">
+        <field name="name">À contrôler</field>
+        <field name="parent_id" ref="gpl_reservoir_menu_section"/>
+        <field name="action" ref="action_gpl_reservoirs_expiring"/>
+        <field name="sequence">30</field>
+        <field name="web_icon_data">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==</field>
+    </record>
+
+     <!-- Ajouter le tableau de bord dans le menu -->
+    <menuitem id="menu_gpl_reservoir_dashboard"
+              name="Tableau de bord"
+              parent="gpl_reservoir_menu_section"
+              action="action_gpl_reservoir_dashboard"
+              sequence="5"/>
+
+    <!-- Menu pour enregistrer installation existante -->
+    <menuitem id="menu_gpl_existing_installation"
+              name="Installation existante"
+              parent="menu_gpl_operations"
+              action="action_gpl_existing_installation_wizard"
+              sequence="50"/>
+
     <!-- Menu Stock -->
     <menuitem name="Stock" parent="gpl_menu_root" id="gpl_reservoir_menu_root" sequence="3" />
 
