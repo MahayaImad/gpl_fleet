@@ -7,30 +7,80 @@
         <field name="inherit_id" ref="stock.view_production_lot_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet" position="before">
-                <field name="is_gpl_reservoir" invisible="1"/>
+                <field name="is_gpl_reservoir" column_invisible="True"/>
             </xpath>
 
-           <!-- <xpath expr="//group[@name='main']" position="after">
-                <group string="Informations GPL" invisible="is_gpl_reservoir == False">
+            <xpath expr="//group[@name='main_group']" position="after">
+                <group string="Informations GPL" invisible="not is_gpl_reservoir">
+                    <group>
+                        <field name="manufacturing_date"/>
+                        <field name="age_years" widget="float" readonly="1"/>
+                        <field name="remaining_life_years" widget="progressbar" readonly="1"/>
+                        <field name="location_status" widget="badge" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="state" widget="badge"
+                               decoration-success="state == 'valid'"
+                               decoration-warning="state in ['expiring_soon', 'test_required']"
+                               decoration-danger="state in ['expired', 'too_old', 'out_of_service']"/>
+                        <field name="vehicle_id"
+                               options="{'no_create': True}"
+                               readonly="location_status != 'stock'"/>
+                    </group>
+                </group>
+
+                <group string="Certifications et Épreuves" invisible="not is_gpl_reservoir">
                     <group>
                         <field name="certification_number"/>
                         <field name="certification_date"/>
                         <field name="expiry_date" readonly="1"/>
-                        <field name="state" widget="badge"
-                               decoration-success="state == 'valid'"
-                               decoration-warning="state == 'expiring_soon'"
-                               decoration-danger="state == 'expired'"/>
                     </group>
                     <group>
-                        <field name="vehicle_id" options="{'no_create': True}"/>
-                        <field name="product_id" readonly="1" invisible="1"/>
+                        <field name="last_test_date"/>
+                        <field name="next_test_date" readonly="1"/>
+                        <field name="days_until_next_test" readonly="1" widget="badge"
+                               decoration-danger="days_until_next_test &lt;= 0"
+                               decoration-warning="days_until_next_test &gt; 0 and days_until_next_test &lt;= 180"
+                               decoration-success="days_until_next_test &gt; 180"/>
                     </group>
                 </group>
-            </xpath>-->
+            </xpath>
+
+            <!-- Boutons d'action avec syntaxe Odoo 17 -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <field name="state" column_invisible="True"/>
+                <field name="location_status" column_invisible="True"/>
+                <button name="action_perform_test" type="object"
+                        class="oe_stat_button" icon="fa-check-circle"
+                        invisible="not is_gpl_reservoir or state not in ['expiring_soon', 'test_required']">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Effectuer</span>
+                        <span class="o_stat_text">Réépreuve</span>
+                    </div>
+                </button>
+
+                <button name="action_install_on_vehicle" type="object"
+                        class="oe_stat_button" icon="fa-car"
+                        invisible="not is_gpl_reservoir or location_status != 'stock'">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Installer</span>
+                        <span class="o_stat_text">sur véhicule</span>
+                    </div>
+                </button>
+
+                <button name="action_remove_from_vehicle" type="object"
+                        class="oe_stat_button" icon="fa-times"
+                        invisible="not is_gpl_reservoir or location_status != 'installed'">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Retirer</span>
+                        <span class="o_stat_text">du véhicule</span>
+                    </div>
+                </button>
+            </xpath>
         </field>
     </record>
 
-    <!-- Vue liste spécialisée pour les réservoirs GPL -->
+    <!-- Vue liste spécialisée pour les Réservoirs GPL -->
     <record id="view_stock_lot_gpl_reservoir_tree" model="ir.ui.view">
         <field name="name">stock.lot.gpl.reservoir.tree</field>
         <field name="model">stock.lot</field>
@@ -38,16 +88,26 @@
             <tree string="Réservoirs GPL"
                   decoration-success="state == 'valid'"
                   decoration-warning="state == 'expiring_soon'"
-                  decoration-danger="state == 'expired'">
+                  decoration-danger="state in ['expired', 'test_required', 'too_old']"
+                  sample="1">
                 <field name="name" string="N° Série"/>
-                <field name="product_id" string="Modèle de réservoir"/>
-                <field name="certification_number"/>
-                <field name="certification_date"/>
-                <field name="expiry_date"/>
-                <field name="state" widget="badge"/>
-                <field name="vehicle_id"/>
-                <field name="company_id" groups="base.group_multi_company"/>
-                <field name="is_gpl_reservoir" invisible="1"/>
+                <field name="product_id" string="Modèle"/>
+                <field name="manufacturing_date"/>
+                <field name="age_years" string="Âge (ans)" widget="float"/>
+                <field name="remaining_life_years" string="Vie restante (ans)" widget="progressbar"/>
+                <field name="certification_number" optional="show"/>
+                <field name="next_test_date"/>
+                <field name="days_until_next_test" string="Jours avant test" widget="badge"
+                       decoration-success="days_until_next_test &gt; 180"
+                       decoration-warning="days_until_next_test &lt;= 180 and days_until_next_test &gt; 0"
+                       decoration-danger="days_until_next_test &lt;= 0"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'valid'"
+                       decoration-warning="state in ['expiring_soon', 'test_required']"
+                       decoration-danger="state in ['expired', 'too_old', 'out_of_service']"/>
+                <field name="location_status" widget="badge" optional="show"/>
+                <field name="vehicle_id" optional="show"/>
+                <field name="is_gpl_reservoir" column_invisible="True"/>
             </tree>
         </field>
     </record>
@@ -63,71 +123,111 @@
                 <field name="certification_number"/>
                 <field name="vehicle_id"/>
                 <separator/>
+
+                <!-- Filtres par état -->
                 <filter string="Valides" name="valid" domain="[('state', '=', 'valid')]"/>
                 <filter string="Expiration proche" name="expiring_soon" domain="[('state', '=', 'expiring_soon')]"/>
-                <filter string="Expirés" name="expired" domain="[('state', '=', 'expired')]"/>
+                <filter string="Réépreuve requise" name="test_required" domain="[('state', '=', 'test_required')]"/>
+                <filter string="Trop anciens" name="too_old" domain="[('state', '=', 'too_old')]"/>
                 <separator/>
-                <filter string="Installés" name="installed" domain="[('vehicle_id', '!=', False)]"/>
-                <filter string="En stock" name="in_stock" domain="[('vehicle_id', '=', False)]"/>
+
+                <!-- Filtres par localisation -->
+                <filter string="En stock" name="in_stock" domain="[('location_status', '=', 'stock')]"/>
+                <filter string="Installés" name="installed" domain="[('location_status', '=', 'installed')]"/>
+                <filter string="En maintenance" name="maintenance" domain="[('location_status', '=', 'maintenance')]"/>
                 <separator/>
-                <filter string="À contrôler dans 6 mois" name="control_6_months"
-                        domain="[('expiry_date', '&lt;=', (context_today() + relativedelta(months=6)).strftime('%Y-%m-%d')), ('expiry_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
-                <group expand="1" string="Regrouper par">
+
+                <!-- Filtres par âge -->
+                <filter string="Moins de 5 ans" name="young" domain="[('age_years', '&lt;', 5)]"/>
+                <filter string="5-10 ans" name="middle_age" domain="[('age_years', '&gt;=', 5), ('age_years', '&lt;', 10)]"/>
+                <filter string="10-15 ans" name="old" domain="[('age_years', '&gt;=', 10), ('age_years', '&lt;', 15)]"/>
+                <filter string="Plus de 15 ans" name="very_old" domain="[('age_years', '&gt;=', 15)]"/>
+                <separator/>
+
+                <!-- Filtres par tests -->
+                <filter string="Test dans 6 mois" name="test_6_months"
+                        domain="[('days_until_next_test', '&lt;=', 180), ('days_until_next_test', '&gt;', 0)]"/>
+                <filter string="Test en retard" name="test_overdue"
+                        domain="[('days_until_next_test', '&lt;=', 0)]"/>
+
+                <group expand="0" string="Group By">
                     <filter string="État" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Localisation" name="group_location" context="{'group_by': 'location_status'}"/>
                     <filter string="Modèle" name="group_product" context="{'group_by': 'product_id'}"/>
                     <filter string="Véhicule" name="group_vehicle" context="{'group_by': 'vehicle_id'}"/>
-                    <filter string="Mois d'expiration" name="group_expiry" context="{'group_by': 'expiry_date:month'}"/>
+                    <filter string="Année de fabrication" name="group_manufacturing"
+                            context="{'group_by': 'manufacturing_date:year'}"/>
+                    <filter string="Mois de prochain test" name="group_next_test"
+                            context="{'group_by': 'next_test_date:month'}"/>
                 </group>
             </search>
         </field>
     </record>
 
-    <!-- Vue kanban pour les réservoirs GPL -->
+    <!-- Vue kanban pour réservoirs -->
     <record id="view_stock_lot_gpl_reservoir_kanban" model="ir.ui.view">
         <field name="name">stock.lot.gpl.reservoir.kanban</field>
         <field name="model">stock.lot</field>
         <field name="arch" type="xml">
-            <kanban default_group_by="state" class="o_kanban_small_column">
+            <kanban default_group_by="state" class="o_kanban_small_column" sample="1">
                 <field name="name"/>
                 <field name="product_id"/>
-                <field name="certification_date"/>
-                <field name="expiry_date"/>
+                <field name="manufacturing_date"/>
+                <field name="age_years"/>
+                <field name="remaining_life_years"/>
+                <field name="next_test_date"/>
+                <field name="days_until_next_test"/>
                 <field name="state"/>
-                <field name="vehicle_id"/>
                 <field name="certification_number"/>
+                <field name="location_status"/>
+                <field name="vehicle_id"/>
                 <templates>
                     <t t-name="kanban-box">
                         <div t-attf-class="oe_kanban_card oe_kanban_global_click
                                           #{record.state.raw_value == 'valid' ? 'border-success' :
                                             record.state.raw_value == 'expiring_soon' ? 'border-warning' : 'border-danger'}">
                             <div class="oe_kanban_content">
-                                <div class="o_kanban_record_top">
+                                <div class="o_kanban_record_top mb-2">
                                     <div class="o_kanban_record_headings">
                                         <strong class="o_kanban_record_title">
-                                            <i class="fa fa-fire"></i>
-                                            <t t-esc="record.name.value"/>
+                                            <i class="fa fa-fire text-primary me-1" title=" "/>
+                                            <field name="name"/>
                                         </strong>
-                                        <small class="o_kanban_record_subtitle">
-                                            <t t-esc="record.product_id.value"/>
-                                        </small>
+                                        <div class="o_kanban_record_subtitle text-muted">
+                                            <field name="product_id"/>
+                                        </div>
                                     </div>
-                                    <span t-attf-class="badge #{record.state.raw_value == 'valid' ? 'bg-success' :
-                                                              record.state.raw_value == 'expiring_soon' ? 'bg-warning' : 'bg-danger'}">
-                                        <t t-esc="record.state.value"/>
-                                    </span>
+                                    <field name="state" widget="label_selection"
+                                           options="{'classes': {'valid': 'success', 'expiring_soon': 'warning',
+                                                                'test_required': 'warning', 'expired': 'danger',
+                                                                'too_old': 'danger'}}"/>
                                 </div>
                                 <div class="o_kanban_record_body">
-                                    <div t-if="record.certification_number.raw_value">
-                                        <strong>Certification:</strong> <t t-esc="record.certification_number.value"/>
+                                    <div t-if="record.manufacturing_date.raw_value" class="mb-1">
+                                        <strong>Fabriqué:</strong> <field name="manufacturing_date"/><br/>
+                                        <strong>Âge:</strong> <field name="age_years"/> ans
                                     </div>
-                                    <div t-if="record.expiry_date.raw_value">
-                                        <strong>Expire le:</strong> <t t-esc="record.expiry_date.value"/>
+                                    <div t-if="record.certification_number.raw_value" class="mb-1">
+                                        <strong>Certification:</strong> <field name="certification_number"/>
                                     </div>
-                                    <div t-if="record.vehicle_id.raw_value">
-                                        <strong>Installé sur:</strong> <t t-esc="record.vehicle_id.value"/>
+                                    <div t-if="record.next_test_date.raw_value" class="mb-1">
+                                        <strong>Prochain test:</strong> <field name="next_test_date"/>
+                                        <br/>
+                                        <field name="days_until_next_test" widget="badge"
+                                               decoration-success="days_until_next_test &gt; 180"
+                                               decoration-warning="days_until_next_test &gt; 0 and days_until_next_test &lt;= 180"
+                                               decoration-danger="days_until_next_test &lt;= 0"/>
                                     </div>
-                                    <div t-if="!record.vehicle_id.raw_value" class="text-muted">
-                                        <i class="fa fa-warehouse"></i> En stock
+                                    <div class="text-muted mt-2">
+                                        <t t-if="record.location_status.raw_value == 'stock'">
+                                            <i class="fa fa-warehouse" title=" "/> En stock
+                                        </t>
+                                        <t t-elif="record.location_status.raw_value == 'installed'">
+                                            <i class="fa fa-car" title=" "/> <field name="vehicle_id"/>
+                                        </t>
+                                        <t t-else="">
+                                            <i class="fa fa-wrench" title=" "/> En maintenance
+                                        </t>
                                     </div>
                                 </div>
                             </div>
@@ -138,31 +238,336 @@
         </field>
     </record>
 
+    <!-- Vue Dashboard pour gpl.reservoir.dashboard -->
+    <record id="view_gpl_reservoir_dashboard_form" model="ir.ui.view">
+        <field name="name">gpl.reservoir.dashboard.form</field>
+        <field name="model">gpl.reservoir.dashboard</field>
+        <field name="arch" type="xml">
+            <form string="Tableau de bord Réservoirs GPL" create="false" edit="false">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><i class="fa fa-chart-simple text-primary" title=" " /> Tableau de bord Réservoirs GPL</h1>
+                    </div>
+
+                    <!-- Statistiques principales -->
+                    <div class="row mt-4">
+                        <div class="col-lg-3 col-md-6">
+                            <div class="card text-center">
+                                <div class="card-body bg-primary text-white">
+                                    <div class="row">
+                                        <div class="col-4">
+                                            <i class="fa fa-list fa-3x" title=" " />
+                                        </div>
+                                        <div class="col-8 text-end">
+                                            <h2 class="mb-0">
+                                                <field name="total_reservoirs" nolabel="1"/>
+                                            </h2>
+                                            <p>Total Réservoirs</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <button name="action_view_all_reservoirs" type="object"
+                                            class="btn btn-link text-primary">
+                                        Voir tous <i class="fa fa-arrow-circle-right" title=" "/>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+                            <div class="card text-center">
+                                <div class="card-body bg-success text-white">
+                                    <div class="row">
+                                        <div class="col-4">
+                                            <i class="fa fa-database fa-3x" title=" " />
+                                        </div>
+                                        <div class="col-8 text-end">
+                                            <h2 class="mb-0">
+                                                <field name="reservoirs_in_stock" nolabel="1"/>
+                                            </h2>
+                                            <p>En Stock</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <button name="action_view_stock_reservoirs" type="object"
+                                            class="btn btn-link text-success">
+                                        Voir le stock <i class="fa fa-arrow-circle-right" title=" "/>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+                            <div class="card text-center">
+                                <div class="card-body bg-info text-white">
+                                    <div class="row">
+                                        <div class="col-4">
+                                            <i class="fa fa-car fa-3x" title=" " />
+                                        </div>
+                                        <div class="col-8 text-end">
+                                            <h2 class="mb-0">
+                                                <field name="reservoirs_installed" nolabel="1"/>
+                                            </h2>
+                                            <p>Installés</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <button name="action_view_installed_reservoirs" type="object"
+                                            class="btn btn-link text-info">
+                                        Voir installations <i class="fa fa-arrow-circle-right" title=" " />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+                            <div class="card text-center">
+                                <div class="card-body bg-warning text-white">
+                                    <div class="row">
+                                        <div class="col-4">
+                                            <i class="fa fa-exclamation-triangle fa-3x" title=" " />
+                                        </div>
+                                        <div class="col-8 text-end">
+                                            <h2 class="mb-0">
+                                                <field name="reservoirs_need_control" nolabel="1"/>
+                                            </h2>
+                                            <p>À Contrôler</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <button name="action_view_control_needed" type="object"
+                                            class="btn btn-link text-warning">
+                                        Voir contrôles <i class="fa fa-arrow-circle-right" title=" "/>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ligne secondaire avec détails -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fa fa-clock-o" title=" " /> Alertes par priorité</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Réépreuve immédiate</span>
+                                            <span class="badge bg-danger">
+                                                <field name="immediate_retest" nolabel="1"/>
+                                            </span>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-danger" role="progressbar"
+                                                 modifiers="{'style': {'width': immediate_retest > 0 ? '100%' : '0%'}}">
+                                            </div>
+                                        </div>
+                                        <button name="action_view_immediate_retest" type="object"
+                                                class="btn btn-sm btn-link text-danger"
+                                                invisible="immediate_retest == 0">
+                                            Voir détails →
+                                        </button>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Réépreuve dans 6 mois</span>
+                                            <span class="badge bg-warning">
+                                                <field name="retest_6_months" nolabel="1"/>
+                                            </span>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-warning" role="progressbar"
+                                                 modifiers="{'style': {'width': retest_6_months > 0 ? '100%' : '0%'}}">
+                                            </div>
+                                        </div>
+                                        <button name="action_view_retest_6_months" type="object"
+                                                class="btn btn-sm btn-link text-warning"
+                                                invisible="retest_6_months == 0">
+                                            Voir détails →
+                                        </button>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Trop anciens (15 ans)</span>
+                                            <span class="badge bg-dark">
+                                                <field name="reservoirs_too_old" nolabel="1"/>
+                                            </span>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-dark" role="progressbar"
+                                                 modifiers="{'style': {'width': reservoirs_too_old > 0 ? '100%' : '0%'}}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fa fa-calendar" title=" "/> Répartition par âge</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>0-5 ans</span>
+                                            <span class="badge bg-success">
+                                                <field name="reservoirs_0_5_years" nolabel="1"/>
+                                            </span>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-success" role="progressbar"
+                                                 modifiers="{'style': {'width': total_reservoirs > 0 ? ((reservoirs_0_5_years * 100.0 / total_reservoirs) + '%') : '0%'}}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>5-10 ans</span>
+                                            <span class="badge bg-info">
+                                                <field name="reservoirs_5_10_years" nolabel="1"/>
+                                            </span>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-info" role="progressbar"
+                                                 modifiers="{'style': {'width': total_reservoirs > 0 ? ((reservoirs_5_10_years * 100.0 / total_reservoirs) + '%') : '0%'}}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>10-15 ans</span>
+                                            <span class="badge bg-warning">
+                                                <field name="reservoirs_10_15_years" nolabel="1"/>
+                                            </span>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-warning" role="progressbar"
+                                                 modifiers="{'style': {'width': total_reservoirs > 0 ? ((reservoirs_10_15_years * 100.0 / total_reservoirs) + '%') : '0%'}}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>+15 ans</span>
+                                            <span class="badge bg-danger">
+                                                <field name="reservoirs_over_15_years" nolabel="1"/>
+                                            </span>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-danger" role="progressbar"
+                                                 modifiers="{'style': {'width': total_reservoirs > 0 ? ((reservoirs_over_15_years * 100.0 / total_reservoirs) + '%') : '0%'}}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions rapides -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fa fa-bolt" title=" " /> Actions rapides</h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <button name="action_new_reservoir_product" type="object"
+                                            class="btn btn-primary me-2">
+                                        <i class="fa fa-plus" title=" " /> Nouveau Réservoir
+                                    </button>
+                                    <button name="action_view_stock_reservoirs" type="object"
+                                            class="btn btn-success me-2">
+                                        <i class="fa fa-warehouse" title=" " /> Stock Disponible
+                                    </button>
+                                    <button name="action_view_control_needed" type="object"
+                                            class="btn btn-warning me-2">
+                                        <i class="fa fa-exclamation-triangle" title=" " /> Contrôles Urgents
+                                    </button>
+                                    <button name="action_refresh_stats" type="object"
+                                            class="btn btn-info me-2">
+                                        <i class="fa fa-refresh" title=" " /> Actualiser
+                                    </button>
+                                    <button name="action_export_reservoir_report" type="object"
+                                            class="btn btn-secondary">
+                                        <i class="fa fa-file-pdf-o" title=" " /> Exporter Rapport
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <!-- Vue pivot pour analyses -->
     <record id="view_stock_lot_gpl_reservoir_pivot" model="ir.ui.view">
         <field name="name">stock.lot.gpl.reservoir.pivot</field>
         <field name="model">stock.lot</field>
         <field name="arch" type="xml">
-            <pivot string="Analyse des réservoirs GPL">
+            <pivot string="Analyse des réservoirs GPL" sample="1">
                 <field name="product_id" type="row"/>
                 <field name="state" type="col"/>
-                <field name="expiry_date" type="row" interval="month"/>
+                <field name="age_years" type="measure"/>
+                <field name="days_until_next_test" type="measure"/>
             </pivot>
         </field>
+    </record>
+
+    <!-- Vue graphique pour analyse des réservoirs -->
+    <record id="view_gpl_reservoir_graph_analysis" model="ir.ui.view">
+        <field name="name">gpl.reservoir.graph.analysis</field>
+        <field name="model">stock.lot</field>
+        <field name="arch" type="xml">
+            <graph string="Analyse des réservoirs GPL" type="pie" sample="1">
+                <field name="state"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Vue graphique évolution par mois -->
+    <record id="view_gpl_reservoir_graph_timeline" model="ir.ui.view">
+        <field name="name">gpl.reservoir.graph.timeline</field>
+        <field name="model">stock.lot</field>
+        <field name="arch" type="xml">
+            <graph string="Évolution des réservoirs" type="line" sample="1">
+                <field name="manufacturing_date" interval="month"/>
+                <field name="location_status" type="col"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Action pour le dashboard -->
+    <record id="action_gpl_reservoir_dashboard" model="ir.actions.act_window">
+        <field name="name">Tableau de bord Réservoirs GPL</field>
+        <field name="res_model">gpl.reservoir.dashboard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_gpl_reservoir_dashboard_form"/>
+        <field name="target">inline</field>
     </record>
 
     <!-- Action principale pour les réservoirs GPL -->
     <record id="action_gpl_reservoirs" model="ir.actions.act_window">
         <field name="name">Réservoirs GPL</field>
         <field name="res_model">stock.lot</field>
-        <field name="view_mode">kanban,tree,form,pivot</field>
+        <field name="view_mode">kanban,tree,form,pivot,graph</field>
         <field name="domain">[('is_gpl_reservoir', '=', True)]</field>
         <field name="context">{'search_default_group_state': 1}</field>
-        <field name="view_ids" eval="[(5, 0, 0),
-                                     (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_stock_lot_gpl_reservoir_kanban')}),
-                                     (0, 0, {'view_mode': 'tree', 'view_id': ref('view_stock_lot_gpl_reservoir_tree')}),
-                                     (0, 0, {'view_mode': 'form', 'view_id': ref('view_stock_lot_gpl_reservoir_form')}),
-                                     (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_stock_lot_gpl_reservoir_pivot')})]"/>
+        <field name="search_view_id" ref="view_stock_lot_gpl_reservoir_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Aucun réservoir GPL trouvé
@@ -179,11 +584,9 @@
         <field name="name">Réservoirs à contrôler</field>
         <field name="res_model">stock.lot</field>
         <field name="view_mode">tree,form</field>
-        <field name="domain">[('is_gpl_reservoir', '=', True), ('state', 'in', ['expiring_soon', 'expired'])]</field>
+        <field name="domain">[('is_gpl_reservoir', '=', True), ('state', 'in', ['expiring_soon', 'expired', 'test_required'])]</field>
         <field name="context">{'search_default_expiring_soon': 1}</field>
-        <field name="view_ids" eval="[(5, 0, 0),
-                                     (0, 0, {'view_mode': 'tree', 'view_id': ref('view_stock_lot_gpl_reservoir_tree')}),
-                                     (0, 0, {'view_mode': 'form', 'view_id': ref('view_stock_lot_gpl_reservoir_form')})]"/>
+        <field name="search_view_id" ref="view_stock_lot_gpl_reservoir_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Aucun réservoir à contrôler
@@ -199,12 +602,9 @@
         <field name="name">Réservoirs en stock</field>
         <field name="res_model">stock.lot</field>
         <field name="view_mode">kanban,tree,form</field>
-        <field name="domain">[('is_gpl_reservoir', '=', True), ('vehicle_id', '=', False)]</field>
-        <field name="context">{'search_default_valid': 1}</field>
-        <field name="view_ids" eval="[(5, 0, 0),
-                                     (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_stock_lot_gpl_reservoir_kanban')}),
-                                     (0, 0, {'view_mode': 'tree', 'view_id': ref('view_stock_lot_gpl_reservoir_tree')}),
-                                     (0, 0, {'view_mode': 'form', 'view_id': ref('view_stock_lot_gpl_reservoir_form')})]"/>
+        <field name="domain">[('is_gpl_reservoir', '=', True), ('location_status', '=', 'stock')]</field>
+        <field name="context">{'search_default_valid': 1, 'search_default_group_state': 1}</field>
+        <field name="search_view_id" ref="view_stock_lot_gpl_reservoir_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Aucun réservoir en stock
@@ -215,146 +615,104 @@
         </field>
     </record>
 
-
-
-
-    <!-- Vue tableau de bord pour les réservoirs -->
-<record id="view_gpl_reservoir_dashboard" model="ir.ui.view">
-    <field name="name">gpl.reservoir.dashboard</field>
-    <field name="model">stock.lot</field>
-    <field name="arch" type="xml">
-        <kanban class="o_kanban_dashboard">
-            <field name="id"/>
-            <field name="state"/>
-            <!--<templates>
-                <t t-name="kanban-box">
-                    <div class="container o_kanban_card_content">
-                        <div class="row">
-                            <div class="col-12">
-                                <view type="graph" ref="view_stock_lot_gpl_reservoir_graph"/>
-                                <div class="o_kanban_primary_left">
-                                    <div class="o_aggregate">
-                                        <span class="o_value"><field name="id" widget="statinfo" string="Total réservoirs"/></span>
-                                        <span class="o_label">Total réservoirs</span>
-                                    </div>
-                                    <div class="o_aggregate" domain="[('state', '=', 'valid')]">
-                                        <span class="o_value"><field name="id" widget="statinfo"/></span>
-                                        <span class="o_label">Valides</span>
-                                    </div>
-                                    <div class="o_aggregate" domain="[('state', '=', 'expiring_soon')]">
-                                        <span class="o_value"><field name="id" widget="statinfo"/></span>
-                                        <span class="o_label">Expiration proche</span>
-                                    </div>
-                                    <div class="o_aggregate" domain="[('state', '=', 'expired')]">
-                                        <span class="o_value"><field name="id" widget="statinfo"/></span>
-                                        <span class="o_label">Expirés</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </t>
-            </templates> -->
-        </kanban>
-    </field>
-</record>
-
-    <!-- Vue graphique pour les réservoirs -->
-    <record id="view_stock_lot_gpl_reservoir_graph" model="ir.ui.view">
-        <field name="name">stock.lot.gpl.reservoir.graph</field>
-        <field name="model">stock.lot</field>
-        <field name="arch" type="xml">
-            <graph string="Évolution des réservoirs GPL" type="line">
-                <field name="certification_date" type="row" interval="month"/>
-                <field name="state" type="col"/>
-                <field name="id" type="measure"/>
-            </graph>
+    <!-- Action pour réservoirs installés -->
+    <record id="action_gpl_reservoirs_installed" model="ir.actions.act_window">
+        <field name="name">Réservoirs installés</field>
+        <field name="res_model">stock.lot</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('is_gpl_reservoir', '=', True), ('location_status', '=', 'installed')]</field>
+        <field name="context">{'search_default_group_state': 1}</field>
+        <field name="search_view_id" ref="view_stock_lot_gpl_reservoir_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucun réservoir installé
+            </p>
+            <p>
+                Cette vue affiche les réservoirs GPL actuellement installés sur des véhicules clients.
+            </p>
         </field>
     </record>
-
-    <!-- Action pour le tableau de bord des réservoirs -->
-    <record id="action_gpl_reservoir_dashboard" model="ir.actions.act_window">
-        <field name="name">Tableau de bord réservoirs</field>
-        <field name="res_model">stock.lot</field>
-        <field name="view_mode">dashboard,graph,pivot</field>
-        <field name="domain">[('product_id.is_gpl_reservoir', '=', True)]</field>
-        <!--<field name="view_ids" eval="[(5, 0, 0),
-                                     (0, 0, {'view_mode': 'dashboard', 'view_id': ref('view_gpl_reservoir_dashboard')}),
-                                     (0, 0, {'view_mode': 'graph', 'view_id': ref('view_stock_lot_gpl_reservoir_graph')}),
-                                     (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_stock_lot_gpl_reservoir_pivot')})]"/> -->
-    </record>
-
 
     <!-- Action automatique pour les alertes de réservoirs -->
     <record id="ir_cron_gpl_reservoir_alerts" model="ir.cron">
-        <field name="name">Alertes réservoirs GPL</field>
-        <field name="model_id" ref="model_stock_lot"/>
+        <field name="name">GPL - Vérification état réservoirs</field>
+        <field name="model_id" ref="stock.model_stock_lot"/>
         <field name="state">code</field>
-        <field name="code">
-# Vérifie les réservoirs expirant bientôt et envoie des alertes
-reservoirs = env['stock.lot'].search([
-    ('product_id.is_gpl_reservoir', '=', True),
-    ('state', 'in', ['expiring_soon', 'expired'])
-])
-
-if reservoirs and env['ir.config_parameter'].sudo().get_param('gpl_fleet.enable_reservoir_alerts', 'True').lower() == 'true':
-    # Logique d'alerte à implémenter
-    pass
-        </field>
+        <field name="code">model._cron_check_gpl_reservoir_state()</field>
         <field name="interval_number">1</field>
         <field name="interval_type">days</field>
         <field name="numbercall">-1</field>
         <field name="active" eval="True"/>
     </record>
 
-    <!-- Rapports spécialisés pour les réservoirs -->
+    <!-- Rapport PDF pour la liste des réservoirs -->
     <record id="action_report_gpl_reservoir_list" model="ir.actions.report">
         <field name="name">Liste des réservoirs GPL</field>
         <field name="model">stock.lot</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">gpl_fleet.report_gpl_reservoir_list</field>
         <field name="report_file">gpl_fleet.report_gpl_reservoir_list</field>
-        <field name="print_report_name">'Liste Réservoirs GPL - %s' % (datetime.now().strftime('%Y%m%d'))</field>
+        <field name="print_report_name">'Réservoirs_GPL_%s' % (object.env['ir.sequence'].next_by_code('report.sequence') or '')</field>
         <field name="binding_model_id" ref="stock.model_stock_lot"/>
         <field name="binding_type">report</field>
     </record>
 
-    <!-- Modèle de rapport pour la liste des réservoirs -->
+    <!-- Template de rapport pour la liste des réservoirs -->
     <template id="report_gpl_reservoir_list">
         <t t-call="web.html_container">
-            <t t-foreach="docs" t-as="o">
+            <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
                     <div class="page">
-                        <h2>Liste des réservoirs GPL</h2>
-                        <t t-if="o">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>N° Série</th>
-                                        <th>Modèle</th>
-                                        <th>Certification</th>
-                                        <th>Expiration</th>
-                                        <th>État</th>
-                                        <th>Véhicule</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr t-foreach="docs" t-as="reservoir">
-                                        <td><span t-field="reservoir.name"/></td>
-                                        <td><span t-field="reservoir.product_id.name"/></td>
-                                        <td><span t-field="reservoir.certification_date"/></td>
-                                        <td><span t-field="reservoir.expiry_date"/></td>
-                                        <td><span t-field="reservoir.state"/></td>
-                                        <td><span t-field="reservoir.vehicle_id.license_plate"/></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </t>
+                        <h2>Liste des Réservoirs GPL</h2>
+                        <p class="text-muted">Date d'impression: <span t-esc="datetime.datetime.now().strftime('%d/%m/%Y %H:%M')"/></p>
+
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>N° Série</th>
+                                    <th>Modèle</th>
+                                    <th>Date Fabrication</th>
+                                    <th>Certification</th>
+                                    <th>Prochaine Épreuve</th>
+                                    <th>État</th>
+                                    <th>Localisation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="docs" t-as="reservoir">
+                                    <td><span t-field="reservoir.name"/></td>
+                                    <td><span t-field="reservoir.product_id.name"/></td>
+                                    <td><span t-field="reservoir.manufacturing_date" t-options='{"widget": "date"}'/></td>
+                                    <td><span t-field="reservoir.certification_number"/></td>
+                                    <td>
+                                        <span t-field="reservoir.next_test_date" t-options='{"widget": "date"}'/>
+                                        <span t-if="reservoir.days_until_next_test &lt;= 0" class="text-danger">
+                                            (En retard)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span t-attf-class="badge #{reservoir.state == 'valid' and 'badge-success' or
+                                                                   reservoir.state in ['expiring_soon', 'test_required'] and 'badge-warning' or
+                                                                   'badge-danger'}">
+                                            <t t-esc="dict(reservoir._fields['state'].selection).get(reservoir.state, '')"/>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span t-if="reservoir.location_status == 'stock'">En stock</span>
+                                        <span t-elif="reservoir.location_status == 'installed'">
+                                            Installé sur <span t-field="reservoir.vehicle_id.name"/>
+                                        </span>
+                                        <span t-else="">Maintenance</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </t>
             </t>
         </t>
     </template>
 
-</odoo>
 
+
+</odoo>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
-        <!-- Séquence pour gpl.service.installation -->
+    <data noupdate="0">
+        <!-- Mise à jour des séquences existantes -->
         <record id="seq_gpl_service_installation" model="ir.sequence">
             <field name="name">Séquence Installation GPL</field>
             <field name="code">gpl.service.installation</field>
@@ -10,6 +10,31 @@
             <field name="company_id" eval="False"/>
         </record>
 
+        <record id="seq_gpl_inspection" model="ir.sequence">
+            <field name="name">Séquence Contrôle Technique GPL</field>
+            <field name="code">gpl.inspection</field>
+            <field name="prefix">CTRL/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_gpl_reservoir_testing" model="ir.sequence">
+            <field name="name">Séquence Réépreuve Réservoir GPL</field>
+            <field name="code">gpl.reservoir.testing</field>
+            <field name="prefix">REPR/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_gpl_repair_order" model="ir.sequence">
+            <field name="name">Séquence Réparation GPL</field>
+            <field name="code">gpl.repair.order</field>
+            <field name="prefix">REP/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Statuts de véhicules mis à jour -->
         <record id="vehicle_status_nouveau" model="gpl.vehicle.status">
             <field name="name">Enregistré</field>
             <field name="sequence">10</field>
@@ -46,34 +71,198 @@
             <field name="is_done">True</field>
         </record>
 
-        <record id="seq_gpl_inspection" model="ir.sequence">
-            <field name="name">Séquence Contrôle Technique GPL</field>
-            <field name="code">gpl.inspection</field>
-            <field name="prefix">CTRL/</field>
-            <field name="padding">5</field>
-            <field name="company_id" eval="False"/>
-        </record>
-
-        <record id="seq_gpl_reservoir_testing" model="ir.sequence">
-            <field name="name">Séquence Réépreuve Réservoir GPL</field>
-            <field name="code">gpl.reservoir.testing</field>
-            <field name="prefix">REPR/</field>
-            <field name="padding">5</field>
-            <field name="company_id" eval="False"/>
-        </record>
-
-        <record id="seq_gpl_repair_order" model="ir.sequence">
-            <field name="name">Séquence Réparation GPL</field>
-            <field name="code">gpl.repair.order</field>
-            <field name="prefix">REP/</field>
-            <field name="padding">5</field>
-            <field name="company_id" eval="False"/>
-        </record>
-
-        <!-- Tag pour les réparations GPL -->
+        <!-- Tags pour véhicules -->
         <record id="tag_gpl_repair" model="gpl.vehicle.tag">
             <field name="name">Réparation GPL</field>
             <field name="color">3</field>
         </record>
+
+        <record id="tag_gpl_installation" model="gpl.vehicle.tag">
+            <field name="name">Installation GPL</field>
+            <field name="color">2</field>
+        </record>
+
+        <record id="tag_gpl_maintenance" model="gpl.vehicle.tag">
+            <field name="name">Maintenance GPL</field>
+            <field name="color">4</field>
+        </record>
+
+        <!-- Fabricants de réservoirs par défaut -->
+        <record id="fabricant_brc" model="gpl.reservoir.fabricant">
+            <field name="name">BRC</field>
+            <field name="code">BRC</field>
+            <field name="pays">Italie</field>
+        </record>
+
+        <record id="fabricant_lpgtech" model="gpl.reservoir.fabricant">
+            <field name="name">LPG Tech</field>
+            <field name="code">LPGT</field>
+            <field name="pays">Pologne</field>
+        </record>
+
+        <record id="fabricant_tomasetto" model="gpl.reservoir.fabricant">
+            <field name="name">Tomasetto Achille</field>
+            <field name="code">TOMAS</field>
+            <field name="pays">Italie</field>
+        </record>
+
+        <!-- Paramètres système par défaut -->
+        <record id="param_reservoir_validity" model="ir.config_parameter">
+            <field name="key">gpl_fleet.reservoir_validity_years</field>
+            <field name="value">5</field>
+        </record>
+
+        <record id="param_reservoir_warning" model="ir.config_parameter">
+            <field name="key">gpl_fleet.reservoir_warning_months</field>
+            <field name="value">6</field>
+        </record>
+
+        <record id="param_enable_alerts" model="ir.config_parameter">
+            <field name="key">gpl_fleet.enable_reservoir_alerts</field>
+            <field name="value">True</field>
+        </record>
+
+        <record id="param_simplified_flow" model="ir.config_parameter">
+            <field name="key">gpl_fleet.simplified_flow</field>
+            <field name="value">False</field>
+        </record>
+
+        <record id="param_auto_invoice" model="ir.config_parameter">
+            <field name="key">gpl_fleet.auto_invoice</field>
+            <field name="value">False</field>
+        </record>
+
+        <record id="param_certification_text" model="ir.config_parameter">
+            <field name="key">gpl_fleet.certification_text</field>
+            <field name="value">Certifions que le véhicule décrit ci-dessous a été équipé conformément aux prescriptions de l'arrêté du 31 Août 1983 relatif aux conditions d'équipement de surveillance et d'exploitation des installations de GPL équipant les véhicules automobiles.</field>
+        </record>
+
+        <!-- Catégories de produits pour GPL -->
+        <record id="product_category_gpl" model="product.category">
+            <field name="name">Équipements GPL</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <record id="product_category_gpl_reservoirs" model="product.category">
+            <field name="name">Réservoirs GPL</field>
+            <field name="parent_id" ref="product_category_gpl"/>
+        </record>
+
+        <record id="product_category_gpl_accessories" model="product.category">
+            <field name="name">Accessoires GPL</field>
+            <field name="parent_id" ref="product_category_gpl"/>
+        </record>
+
+        <!-- Unités de mesure pour GPL
+        <record id="uom_liters" model="uom.uom">
+            <field name="name">Litre</field>
+            <field name="category_id" ref="uom.uom_categ_vol"/>
+            <field name="factor">1.0</field>
+            <field name="uom_type">reference</field>
+        </record>-->
+
+        <!-- Emplacements de stock spécifiques GPL -->
+        <record id="stock_location_gpl_reservoirs" model="stock.location">
+            <field name="name">Stock Réservoirs GPL</field>
+            <field name="location_id" ref="stock.stock_location_stock"/>
+            <field name="usage">internal</field>
+        </record>
+
+        <record id="stock_location_gpl_accessories" model="stock.location">
+            <field name="name">Stock Accessoires GPL</field>
+            <field name="location_id" ref="stock.stock_location_stock"/>
+            <field name="usage">internal</field>
+        </record>
+
+        <!-- Actions automatiques (CRON)
+        # Actions automatiques (CRON)
+<record id="ir_cron_gpl_reservoir_alerts" model="ir.cron">
+    <field name="name">Alertes réservoirs GPL - Vérification quotidienne</field>
+    <field name="model_id" ref="model_stock_lot"/>
+    <field name="state">code</field>
+    <field name="code">
+states_to_check = ['expiring_soon', 'test_required', 'too_old']
+reservoirs_to_check = env['stock.lot'].search([
+    ('is_gpl_reservoir', '=', True),
+    ('state', 'in', states_to_check)
+])
+
+alerts_enabled = env['ir.config_parameter'].sudo().get_param('gpl_fleet.enable_reservoir_alerts', 'True').lower() == 'true'
+
+if alerts_enabled and reservoirs_to_check:
+    import logging
+    _logger = logging.getLogger(__name__)
+    _logger.info(f"GPL: {len(reservoirs_to_check)} réservoirs nécessitent une attention")
+
+    expired = reservoirs_to_check.filtered(lambda r: r.state in ['test_required', 'too_old'])
+    expiring = reservoirs_to_check.filtered(lambda r: r.state == 'expiring_soon')
+
+    if expired:
+        _logger.warning(f"GPL: {len(expired)} réservoirs nécessitent une réépreuve URGENTE")
+    if expiring:
+        _logger.info(f"GPL: {len(expiring)} réservoirs nécessiteront une réépreuve prochainement")
+elif alerts_enabled:
+    import logging
+    _logger = logging.getLogger(__name__)
+    _logger.info("GPL: Aucun réservoir nécessitant une attention aujourd'hui.")
+    </field>
+    <field name="interval_number">1</field>
+    <field name="interval_type">days</field>
+    <field name="numbercall">-1</field>
+    <field name="active" eval="True"/>
+    <field name="doall" eval="False"/>
+</record>-->
+
+
+        <!-- Recalcul automatique des états de réservoirs -->
+        <record id="ir_cron_gpl_reservoir_state_update" model="ir.cron">
+            <field name="name">Mise à jour états réservoirs GPL</field>
+            <field name="model_id" ref="model_stock_lot"/>
+            <field name="state">code</field>
+            <field name="code">
+# Recalcul des états de tous les réservoirs GPL
+reservoirs = env['stock.lot'].search([('is_gpl_reservoir', '=', True)])
+
+for reservoir in reservoirs:
+    # Forcer le recalcul des champs calculés
+    reservoir._compute_state()
+    reservoir._compute_age_info()
+    reservoir._compute_test_info()
+    reservoir._compute_location_status()
+            </field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">weeks</field>
+            <field name="numbercall">-1</field>
+            <field name="active" eval="True"/>
+            <field name="doall" eval="False"/>
+        </record>
+
+        <!-- Templates d'email pour alertes -->
+        <record id="email_template_reservoir_expiring" model="mail.template">
+            <field name="name">Alerte réservoir GPL - Expiration proche</field>
+            <field name="model_id" ref="model_stock_lot"/>
+            <field name="subject">⚠️ Réservoir GPL {{ object.name }} - Réépreuve requise</field>
+            <field name="body_html"><![CDATA[
+<div style="margin: 0px; padding: 0px;">
+    <p>Bonjour,</p>
+
+    <p>Le réservoir GPL <strong>{{ object.name }}</strong> nécessite une attention :</p>
+
+    <ul>
+        <li><strong>Produit :</strong> {{ object.product_id.name }}</li>
+        <li><strong>État :</strong> {{ object.state }}</li>
+        <li><strong>Véhicule :</strong> {{ object.vehicle_id.name if object.vehicle_id else 'En stock' }}</li>
+        <li><strong>Prochaine réépreuve :</strong> {{ object.next_test_date }}</li>
+        <li><strong>Jours restants :</strong> {{ object.days_until_next_test }}</li>
+    </ul>
+
+    <p>Veuillez planifier la réépreuve de ce réservoir dans les plus brefs délais.</p>
+
+    <p>Cordialement,<br/>Système GPL</p>
+</div>
+            ]]></field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
     </data>
 </odoo>

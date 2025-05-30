@@ -50,38 +50,67 @@
               action="action_gpl_reservoir_testing"
               sequence="40"/>
 
-    <!-- Sous-menu Réservoirs GPL dans Stock -->
+
+<!-- === SECTION RÉSERVOIRS GPL AMÉLIORÉE === -->
     <menuitem name="Réservoirs GPL"
               parent="gpl_menu_root"
               id="gpl_reservoir_menu_section"
               sequence="3"/>
 
-    <!-- Sous-menus des réservoirs -->
-    <menuitem id="menu_gpl_reservoirs_all"
-              name="Tous les réservoirs"
-              parent="gpl_reservoir_menu_section"
-              action="action_gpl_reservoirs"
-              sequence="10"/>
-
-    <menuitem id="menu_gpl_reservoirs_stock"
-              name="En stock"
-              parent="gpl_reservoir_menu_section"
-              action="action_gpl_reservoirs_stock"
-              sequence="20"/>
-
-    <menuitem id="menu_gpl_reservoirs_expiring"
-              name="À contrôler"
-              parent="gpl_reservoir_menu_section"
-              action="action_gpl_reservoirs_expiring"
-              sequence="30"/>
-
-     <!-- Ajouter le tableau de bord dans le menu -->
-    <menuitem id="menu_gpl_reservoir_dashboard"
-              name="Tableau de bord"
+    <!-- Dashboard principal -->
+     <menuitem id="menu_gpl_reservoir_dashboard"
+              name="Tableau de bord - Réservoirs"
               parent="gpl_reservoir_menu_section"
               action="action_gpl_reservoir_dashboard"
               sequence="5"/>
 
+    <!-- Séparateur visuel -->
+    <menuitem id="menu_gpl_reservoirs_separator1"
+              name="─── Stock ───"
+              parent="gpl_reservoir_menu_section"
+              sequence="10"/>
+
+    <!-- Réservoirs en stock -->
+    <menuitem id="menu_gpl_reservoirs_stock"
+              name="🏪 En stock"
+              parent="gpl_reservoir_menu_section"
+              action="action_gpl_reservoirs_stock"
+              sequence="11"/>
+
+    <!-- Séparateur visuel -->
+    <menuitem id="menu_gpl_reservoirs_separator2"
+              name="─── Installation ───"
+              parent="gpl_reservoir_menu_section"
+              sequence="20"/>
+
+    <!-- Réservoirs installés -->
+    <menuitem id="menu_gpl_reservoirs_installed"
+              name="🚗 Installés"
+              parent="gpl_reservoir_menu_section"
+              action="action_gpl_reservoirs_installed"
+              sequence="21"/>
+
+
+    <!-- Séparateur visuel -->
+    <menuitem id="menu_gpl_reservoirs_separator3"
+              name="─── Maintenance ───"
+              parent="gpl_reservoir_menu_section"
+              sequence="30"/>
+
+    <!-- Réservoirs à contrôler -->
+    <menuitem id="menu_gpl_reservoirs_control"
+              name="⚠️ À contrôler"
+              parent="gpl_reservoir_menu_section"
+              action="action_gpl_reservoirs_expiring"
+              sequence="31"/>
+
+    <!-- Vue complète (pour administration) -->
+    <menuitem id="menu_gpl_reservoirs_all_admin"
+              name="📋 Vue complète"
+              parent="gpl_reservoir_menu_section"
+              action="action_gpl_reservoirs"
+              sequence="40"
+              groups="base.group_system"/>
     <!-- Menu pour enregistrer installation existante -->
     <menuitem id="menu_gpl_existing_installation"
               name="Installation existante"
@@ -193,6 +222,13 @@
               parent="gpl_fleet.gpl_fleet_configuration"
               sequence="0"
               action="action_gpl_configuration"
+              groups="base.group_system"/>
+
+    <menuitem id="menu_gpl_setup_wizard"
+              name="Assistant Configuration"
+              parent="gpl_fleet_configuration"
+              action="action_gpl_setup_wizard"
+              sequence="1"
               groups="base.group_system"/>
 
     <menuitem name="Models" parent="gpl_fleet_configuration" id="gpl_fleet_models_configuration" sequence="10"/>

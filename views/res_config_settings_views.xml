@@ -9,18 +9,25 @@
             <field name="arch" type="xml">
                  <xpath expr="//form" position="inside">
                     <app data-string="GPL Installation" id="gpl_fleet" string="GPL Installation" name="gpl_fleet">
-                        <block title="Paramètres d'Installation GPL" id="end_contract_setting">
-                            <setting id="gpl_simplified_flow" title="Flux d'installation Simplifié" string="Flux d'installation Simplifié" help="Utiliser un flux d'installation simplifié (préparation → bon de livraison → terminé)">
+
+                        <!-- Section Paramètres d'Installation -->
+                        <block title="Paramètres d'Installation GPL" id="installation_settings">
+                            <setting id="gpl_simplified_flow"
+                                     title="Flux d'installation Simplifié"
+                                     string="Flux d'installation Simplifié"
+                                     help="Utiliser un flux d'installation simplifiée (préparation → bon de livraison → terminé)">
                                 <field name="gpl_simplified_flow" />
+                                <div class="text-muted mt-2" invisible="gpl_simplified_flow == False">
+                                    Mode simplifié : création automatique des bons de commande et livraison
+                                </div>
                             </setting>
 
                             <setting invisible="gpl_simplified_flow == False"
-                                     id ="gpl_auto_invoice"
-                                     title ="Facturation automatique"
+                                     id="gpl_auto_invoice"
+                                     title="Facturation automatique"
                                      string="Facturation automatique"
-                                    help="Créer automatiquement la facture lors de la validation d'une installation">
-
-                                    <field name="gpl_auto_invoice"/>
+                                     help="Créer automatiquement la facture lors de la validation d'une installation">
+                                <field name="gpl_auto_invoice"/>
                             </setting>
 
                             <setting id="gpl_use_default_technician"
@@ -36,127 +43,219 @@
                                      string="Sélection du technicien"
                                      help="Sélectionnez le technicien qui sera assigné par défaut aux nouvelles installations">
                                 <field name="gpl_default_technician_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
-                                <!-- N'affichez pas le champ JSON dans l'interface -->
                                 <field name="gpl_default_technician_ids_json" invisible="1"/>
                             </setting>
                         </block>
 
-
-                         <block title="Paramètres des rapports" id="gpl_legal_texts_settings">
-                            <setting id="gpl_certification_text_setting" string="Texte de certification GPL" help="Texte légal qui apparaîtra sur les certificats de montage GPL">
-                                <div class="content-group">
-                                    <div class="mt16">
-                                        <field name="gpl_certification_text" class="o_light_label" placeholder="Texte de certification..."
-                                               style="min-height: 100px;"/>
-                                    </div>
-                                </div>
-                            </setting>
-                        </block>
-
-                                        <!-- Section Réservoirs GPL -->
+                        <!-- Section Paramètres des Réservoirs GPL -->
                         <block title="Paramètres des réservoirs GPL" id="gpl_reservoir_settings">
                             <setting id="gpl_reservoir_validity_setting"
-                                     string="Durée de validité"
-                                     help="Configurez la durée de validité des certifications de réservoirs GPL">
+                                     string="Durée de validité des certifications"
+                                     help="Configurez les durées de validité et d'alerte pour les réservoirs GPL">
                                 <div class="content-group">
                                     <div class="row mt16">
-                                        <label for="gpl_reservoir_validity_years" class="col-3 o_light_label"/>
+                                        <label for="gpl_reservoir_validity_years" class="col-3 o_light_label" string="Durée de validité"/>
                                         <field name="gpl_reservoir_validity_years" class="col-2"/>
-                                        <span class="col-1">années</span>
+                                        <span class="col-2">années</span>
+                                        <div class="col-5 text-muted">
+                                            <small>Durée entre chaque réépreuve obligatoire</small>
+                                        </div>
                                     </div>
                                     <div class="row mt8">
-                                        <label for="gpl_reservoir_warning_months" class="col-3 o_light_label"/>
+                                        <label for="gpl_reservoir_warning_months" class="col-3 o_light_label" string="Délai d'alerte"/>
                                         <field name="gpl_reservoir_warning_months" class="col-2"/>
-                                        <span class="col-1">mois avant expiration</span>
+                                        <span class="col-2">mois avant expiration</span>
+                                        <div class="col-5 text-muted">
+                                            <small>Quand déclencher les alertes d'expiration</small>
+                                        </div>
                                     </div>
                                 </div>
                             </setting>
 
                             <setting id="gpl_reservoir_alerts_setting"
-                                     string="Alertes automatiques"
+                                     string="Notifications automatiques"
                                      help="Activer les notifications pour les réservoirs expirant bientôt">
                                 <field name="gpl_enable_reservoir_alerts"/>
+                                <div class="text-muted mt-2" invisible="gpl_enable_reservoir_alerts == False">
+                                    Les alertes seront envoyées quotidiennement pour les réservoirs nécessitant une réépreuve
+                                </div>
                             </setting>
                         </block>
 
-                            <!-- Section Statistiques -->
-                            <block title="Statistiques des réservoirs" id="gpl_reservoir_stats">
-                                <div class="row">
-                                    <div class="col-6">
-                                        <div class="o_setting_box">
-                                            <div class="o_setting_left_pane">
-                                                <i class="fa fa-fire text-primary"/>
-                                            </div>
-                                            <div class="o_setting_right_pane">
-                                                <label for="gpl_total_reservoirs" string="Total réservoirs"/>
-                                                <div class="text-muted">
-                                                    <field name="gpl_total_reservoirs" readonly="1"/> réservoirs GPL enregistrés
-                                                </div>
-                                            </div>
+                        <!-- Section Statistiques Temps Réel -->
+                        <block title="Statistiques des réservoirs" id="gpl_reservoir_stats">
+                            <div class="alert alert-info" role="alert">
+                                <strong><i class="fa fa-info-circle"></i> Vue d'ensemble de vos réservoirs GPL</strong><br/>
+                                Ces statistiques sont calculées en temps réel et incluent tous les réservoirs de votre système.
+                            </div>
+
+                            <!-- Statistiques principales -->
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="o_setting_box">
+                                        <div class="o_setting_left_pane">
+                                            <i class="fa fa-fire fa-2x text-primary"/>
                                         </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="o_setting_box">
-                                            <div class="o_setting_left_pane">
-                                                <i class="fa fa-car text-success"/>
-                                            </div>
-                                            <div class="o_setting_right_pane">
-                                                <label for="gpl_reservoirs_installed" string="Installés"/>
-                                                <div class="text-muted">
-                                                    <field name="gpl_reservoirs_installed" readonly="1"/> réservoirs installés sur véhicules
-                                                </div>
+                                        <div class="o_setting_right_pane">
+                                            <label for="gpl_total_reservoirs" string="Total réservoirs"/>
+                                            <div class="text-muted">
+                                                <field name="gpl_total_reservoirs" readonly="1" class="oe_inline"/>
+                                                réservoirs GPL enregistrés dans le système
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="row">
-                                    <div class="col-6">
-                                        <div class="o_setting_box">
-                                            <div class="o_setting_left_pane">
-                                                <i class="fa fa-exclamation-triangle text-warning"/>
-                                            </div>
-                                            <div class="o_setting_right_pane">
-                                                <label for="gpl_reservoirs_expiring" string="Expiration proche"/>
-                                                <div class="text-muted">
-                                                    <field name="gpl_reservoirs_expiring" readonly="1"/> réservoirs à contrôler
-                                                </div>
-                                            </div>
+                                <div class="col-6">
+                                    <div class="o_setting_box">
+                                        <div class="o_setting_left_pane">
+                                            <i class="fa fa-warehouse fa-2x text-success"/>
                                         </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="o_setting_box">
-                                            <div class="o_setting_left_pane">
-                                                <i class="fa fa-times-circle text-danger"/>
-                                            </div>
-                                            <div class="o_setting_right_pane">
-                                                <label for="gpl_reservoirs_expired" string="Expirés"/>
-                                                <div class="text-muted">
-                                                    <field name="gpl_reservoirs_expired" readonly="1"/> réservoirs expirés
-                                                </div>
+                                        <div class="o_setting_right_pane">
+                                            <label for="gpl_reservoirs_installed" string="Réservoirs disponibles"/>
+                                            <div class="text-muted">
+                                                <field name="gpl_reservoirs_installed" readonly="1" class="oe_inline"/>
+                                                réservoirs disponibles en stock pour installation
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="row">
-                                    <div class="col-12 text-center">
-                                        <button name="action_view_reservoir_stats"
-                                                string="Voir les détails"
-                                                type="object"
-                                                class="btn-secondary"/>
-                                        <button name="action_refresh_reservoir_states"
-                                                string="Actualiser les états"
-                                                type="object"
-                                                class="btn-secondary"/>
+                            </div>
+
+                            <!-- Alertes -->
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="o_setting_box">
+                                        <div class="o_setting_left_pane">
+                                            <i class="fa fa-exclamation-triangle fa-2x text-warning"/>
+                                        </div>
+                                        <div class="o_setting_right_pane">
+                                            <label for="gpl_reservoirs_expiring" string="Expiration proche"/>
+                                            <div class="text-muted">
+                                                <field name="gpl_reservoirs_expiring" readonly="1" class="oe_inline"/>
+                                                réservoirs nécessitent une réépreuve prochainement
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </block>
+                                <div class="col-6">
+                                    <div class="o_setting_box">
+                                        <div class="o_setting_left_pane">
+                                            <i class="fa fa-times-circle fa-2x text-danger"/>
+                                        </div>
+                                        <div class="o_setting_right_pane">
+                                            <label for="gpl_reservoirs_expired" string="Attention urgente"/>
+                                            <div class="text-muted">
+                                                <field name="gpl_reservoirs_expired" readonly="1" class="oe_inline"/>
+                                                réservoirs expirés ou trop anciens
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Actions rapides -->
+                            <div class="row mt-3">
+                                <div class="col-12 text-center">
+                                    <button name="action_view_reservoir_stats"
+                                            string="📊 Dashboard Détaillé"
+                                            type="object"
+                                            class="btn btn-primary mr-2"/>
+                                    <button name="action_refresh_reservoir_states"
+                                            string="🔄 Actualiser les États"
+                                            type="object"
+                                            class="btn btn-secondary mr-2"/>
+                                    <button name="action_view_expired_reservoirs"
+                                            string="⚠️ Voir les Urgences"
+                                            type="object"
+                                            class="btn btn-warning mr-2"/>
+                                </div>
+                            </div>
+                        </block>
+
+                        <!-- Section Textes Légaux -->
+                        <block title="Paramètres des rapports" id="gpl_legal_texts_settings">
+                            <setting id="gpl_certification_text_setting"
+                                     string="Texte de certification GPL"
+                                     help="Texte légal qui apparaîtra sur les certificats de montage GPL">
+                                <div class="content-group">
+                                    <div class="mt16">
+                                        <field name="gpl_certification_text"
+                                               class="o_light_label"
+                                               placeholder="Saisissez le texte de certification légale..."
+                                               style="min-height: 120px; width: 100%;"/>
+                                    </div>
+                                    <div class="text-muted mt-2">
+                                        <small>
+                                            <i class="fa fa-info-circle"></i>
+                                            Ce texte apparaîtra sur tous les certificats de montage GPL générés par le système.
+                                            Assurez-vous qu'il respecte la réglementation en vigueur.
+                                        </small>
+                                    </div>
+                                </div>
+                            </setting>
+                        </block>
+
+                        <!-- Section Actions Rapides -->
+                        <block title="Actions rapides" id="gpl_quick_actions">
+                            <div class="alert alert-light" role="alert">
+                                <strong>Raccourcis pour accéder rapidement aux fonctions principales</strong>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-4 text-center mb-3">
+                                    <button name="action_open_vehicles"
+                                            string="🚗 Véhicules GPL"
+                                            type="object"
+                                            class="btn btn-outline-primary btn-lg btn-block"/>
+                                    <small class="text-muted">Gérer les véhicules</small>
+                                </div>
+                                <div class="col-4 text-center mb-3">
+                                    <button name="action_open_installations"
+                                            string="🔧 Installations"
+                                            type="object"
+                                            class="btn btn-outline-success btn-lg btn-block"/>
+                                    <small class="text-muted">Gérer les installations</small>
+                                </div>
+                                <div class="col-4 text-center mb-3">
+                                    <button name="action_open_reservoirs"
+                                            string="🛢️ Réservoirs"
+                                            type="object"
+                                            class="btn btn-outline-info btn-lg btn-block"/>
+                                    <small class="text-muted">Gérer les réservoirs</small>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-4 text-center mb-3">
+                                    <button name="action_open_repairs"
+                                            string="🔨 Réparations"
+                                            type="object"
+                                            class="btn btn-outline-warning btn-lg btn-block"/>
+                                    <small class="text-muted">Gérer les réparations</small>
+                                </div>
+                                <div class="col-4 text-center mb-3">
+                                    <button name="action_open_inspections"
+                                            string="✅ Contrôles"
+                                            type="object"
+                                            class="btn btn-outline-secondary btn-lg btn-block"/>
+                                    <small class="text-muted">Contrôles techniques</small>
+                                </div>
+                                <div class="col-4 text-center mb-3">
+                                    <button name="action_new_existing_installation"
+                                            string="📋 Installation existante"
+                                            type="object"
+                                            class="btn btn-outline-dark btn-lg btn-block"/>
+                                    <small class="text-muted">Enregistrer une installation</small>
+                                </div>
+                            </div>
+                        </block>
                     </app>
                 </xpath>
 
             </field>
         </record>
 
-
+        <!-- Action principale pour la configuration -->
         <record id="action_gpl_configuration" model="ir.actions.act_window">
             <field name="name">Configuration GPL</field>
             <field name="type">ir.actions.act_window</field>

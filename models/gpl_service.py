@@ -92,11 +92,12 @@ class GplService(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if isinstance(vals, dict) and vals.get('name', 'New') == 'New':
-                vals['name'] = self.env['ir.sequence'].next_by_code('gpl.service.installation') or 'New'
+            # Correction: test plus robuste pour le nom
+            if not vals.get('name') or vals.get('name') in ['New', _('New'), 'Nouveau']:
+                vals['name'] = self.env['ir.sequence'].next_by_code('gpl.service.installation') or _('New')
 
-            # Techniciens par défaut
-            if isinstance(vals, dict) and not vals.get('technician_ids'):
+            # Techniciens par défaut - correction de la logique
+            if not vals.get('technician_ids'):
                 use_default_technician = self.env['ir.config_parameter'].sudo().get_param(
                     'gpl_fleet.use_default_technician', 'False').lower() == 'true'
                 if use_default_technician:
@@ -107,13 +108,13 @@ class GplService(models.Model):
                         default_technician_ids = json.loads(default_technician_ids_json)
                         if default_technician_ids:
                             vals['technician_ids'] = [(6, 0, default_technician_ids)]
-                    except:
-                        pass
+                    except Exception as e:
+                        _logger.warning("Erreur lors de l'assignation des techniciens par défaut: %s", str(e))
 
-            # Réservoir du véhicule
+            # Réservoir du véhicule - correction de la logique
             if vals.get('vehicle_id'):
                 vehicle = self.env['gpl.vehicle'].browse(vals['vehicle_id'])
-                if vehicle and vehicle.reservoir_lot_id:
+                if vehicle.exists() and vehicle.reservoir_lot_id:
                     vals['reservoir_lot_id'] = vehicle.reservoir_lot_id.id
 
         return super().create(vals_list)
@@ -127,17 +128,22 @@ class GplService(models.Model):
                 self.client_id = self.vehicle_id.client_id
 
     def action_validate_preparation(self):
-        """Valide la préparation - gère les modes simplifié et standard"""
+        """Valide la préparation - version corrigée"""
         for record in self:
-            # Validations de base
+            # Validations de base renforcées
+            errors = []
+
             if not record.vehicle_id:
-                raise UserError(_("Veuillez sélectionner un véhicule avant de continuer."))
+                errors.append(_("Veuillez sélectionner un véhicule avant de continuer."))
             if not record.technician_ids:
-                raise UserError(_("Veuillez assigner un technicien avant de continuer."))
+                errors.append(_("Veuillez assigner au moins un technicien avant de continuer."))
             if not record.date_service:
-                raise UserError(_("Veuillez définir une date de service avant de continuer."))
+                errors.append(_("Veuillez définir une date de service avant de continuer."))
             if not record.installation_line_ids:
-                raise UserError(_("Veuillez ajouter au moins un produit avant de continuer."))
+                errors.append(_("Veuillez ajouter au moins un produit avant de continuer."))
+
+            if errors:
+                raise UserError("\n".join(errors))
 
             # Éclater les kits en composants
             record._explode_kits()
@@ -160,15 +166,15 @@ class GplService(models.Model):
                         'picking_id': picking.id if picking else False,
                     })
 
-                    msg = _(
-                        "Mode simplifié - Étape 1/2 : Bon de commande %s confirmé et bon de livraison %s préparé par %s") % (
-                              sale_order.name if sale_order else "ERREUR",
-                              picking.name if picking else "ERREUR",
-                              self.env.user.name
-                          )
+                    msg = _("Mode simplifié - Préparation validée : BC %s confirmé et BL %s préparé par %s") % (
+                        sale_order.name if sale_order else "ERREUR",
+                        picking.name if picking else "ERREUR",
+                        self.env.user.name
+                    )
                     record.message_post(body=msg)
 
                 except Exception as e:
+                    _logger.error("Erreur en mode simplifié: %s", str(e))
                     raise UserError(_("Erreur en mode simplifié: %s") % str(e))
             else:
                 # Mode standard : créer seulement le BC
@@ -424,7 +430,7 @@ class GplService(models.Model):
             raise UserError(_("Erreur: %s") % str(e))
 
     def action_complete_installation(self):
-        """Termine l'installation"""
+        """Termine l'installation - version corrigée"""
         for record in self:
             try:
                 simplified_flow = record.use_simplified_flow
@@ -438,7 +444,10 @@ class GplService(models.Model):
                                                                                 'False').lower() == 'true'
                 invoice = None
                 if auto_invoice and not record.invoice_id:
-                    invoice = record._create_invoice()
+                    try:
+                        invoice = record._create_invoice()
+                    except Exception as e:
+                        _logger.warning("Impossible de créer la facture automatiquement: %s", str(e))
 
                 # Marquer comme terminé
                 record.write({'state': 'done', 'date_completion': fields.Date.today()})
@@ -446,9 +455,9 @@ class GplService(models.Model):
                 # Mettre à jour le véhicule
                 record._update_vehicle_after_installation()
 
-                # Message
+                # Message de confirmation
                 msg_parts = ["Installation terminée"]
-                if simplified_flow and record.picking_id.state == 'done':
+                if record.picking_id and record.picking_id.state == 'done':
                     msg_parts.append(f"bon de livraison {record.picking_id.name} validé")
                 if invoice:
                     msg_parts.append(f"facture {invoice.name} créée")
@@ -456,10 +465,11 @@ class GplService(models.Model):
                 msg = _("%s par %s") % (", ".join(msg_parts), self.env.user.name)
                 record.message_post(body=msg)
 
-            except Exception as e:
-                raise UserError(_("Erreur lors de la finalisation: %s") % str(e))
+                return True
 
-        return True
+            except Exception as e:
+                _logger.error("Erreur lors de la finalisation de l'installation %s: %s", record.name, str(e))
+                raise UserError(_("Erreur lors de la finalisation: %s") % str(e))
 
     def _validate_picking(self):
         """Valide le bon de livraison en s'assurant que tous les lots sont assignés"""
@@ -468,7 +478,7 @@ class GplService(models.Model):
             return False
 
         try:
-            _logger.info("=== DÉBUT VALIDATION PICKING ===")
+            _logger.info("=== DÉBUT VALIDATION PICKING %s ===", self.picking_id.name)
 
             # Étape 1: Vérifier et forcer l'assignation des lots
             self._force_assign_lots_to_picking_moves()
@@ -480,7 +490,6 @@ class GplService(models.Model):
 
                 _logger.info(f"Traitement mouvement {move.name} - Produit: {move.product_id.name}")
                 _logger.info(f"Quantité à traiter: {qty_to_process}")
-                _logger.info(f"Move_lines disponibles: {len(move.move_line_ids)}")
 
                 # S'assurer qu'il y a des move_lines
                 if not move.move_line_ids:
@@ -489,17 +498,24 @@ class GplService(models.Model):
 
                 # Définir les quantités sur les move_lines
                 for move_line in move.move_line_ids:
-                    if hasattr(move_line, 'qty_done'):
-                        move_line.qty_done = qty_to_process
-                    elif hasattr(move_line, 'quantity'):
-                        move_line.quantity = qty_to_process
+                    # Correction: gestion robuste des champs de quantité
+                    qty_fields = ['qty_done', 'quantity_done', 'product_uom_qty']
+                    for field_name in qty_fields:
+                        if hasattr(move_line, field_name):
+                            setattr(move_line, field_name, qty_to_process)
+                            break
 
                     _logger.info(
                         f"Move_line {move_line.id} - Lot: {move_line.lot_id.name if move_line.lot_id else 'AUCUN'}")
 
             # Étape 3: Valider le picking
             _logger.info("Validation du picking...")
-            self.picking_id.button_validate()
+            if hasattr(self.picking_id, 'button_validate'):
+                self.picking_id.button_validate()
+            else:
+                # Fallback pour anciennes versions
+                self.picking_id.action_done()
+
             _logger.info("=== PICKING VALIDÉ AVEC SUCCÈS ===")
             return True
 
@@ -579,13 +595,16 @@ class GplService(models.Model):
         if install_line and install_line.lot_id:
             move_line_vals['lot_id'] = install_line.lot_id.id
 
-        # Ajouter la quantité
+        # Ajouter la quantité - correction pour compatibilité
         qty = install_line.product_uom_qty if install_line else 1.0
         StockMoveLine = self.env['stock.move.line']
 
-        for field_name in ['reserved_uom_qty', 'product_uom_qty', 'quantity']:
+        # Définir la quantité avec fallback
+        qty_fields = ['reserved_uom_qty', 'product_uom_qty', 'quantity']
+        for field_name in qty_fields:
             if field_name in StockMoveLine._fields:
                 move_line_vals[field_name] = qty
+                break
 
         return StockMoveLine.create(move_line_vals)
 
@@ -595,18 +614,26 @@ class GplService(models.Model):
         if not self.vehicle_id:
             return
 
+        # Récupérer le statut "En attente de validation"
+        validation_status = self.env.ref('gpl_fleet.vehicle_status_attente_validation', raise_if_not_found=False)
+        if not validation_status:
+            # Fallback sur un statut par défaut
+            validation_status = self.env['gpl.vehicle.status'].search([('name', 'ilike', 'validation')], limit=1)
+            if not validation_status:
+                validation_status = self.env['gpl.vehicle.status'].search([], limit=1)
+
         vehicle_values = {
-            'status_id': 4,  # "En attente de validation"
-            'next_service_type': 'inspection'
+            'status_id': validation_status.id if validation_status else False,
+            'next_service_type': 'inspection',
+            'installation_id': self.id
         }
 
         # Associer le réservoir installé
         reservoir_line = self.installation_line_ids.filtered(lambda l: l.product_id.is_gpl_reservoir and l.lot_id)
         if reservoir_line:
-            vehicle_values.update({
-                'reservoir_lot_id': reservoir_line[0].lot_id.id,
-                'installation_id': self.id
-            })
+            vehicle_values['reservoir_lot_id'] = reservoir_line[0].lot_id.id
+            # Mettre à jour aussi le lot pour qu'il pointe vers le véhicule
+            reservoir_line[0].lot_id.write({'vehicle_id': self.vehicle_id.id})
             msg = _("Réservoir GPL %s installé.") % reservoir_line[0].lot_id.name
             self.vehicle_id.message_post(body=msg)
 

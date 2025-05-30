@@ -83,17 +83,6 @@ class GplExistingInstallationWizard(models.TransientModel):
             else:
                 wizard.reservoir_expiry_date = False
 
-    @api.onchange('create_new_client')
-    def _onchange_create_new_client(self):
-        """Réinitialise les champs selon le choix"""
-        if self.create_new_client:
-            self.client_id = False
-        else:
-            # Réinitialiser les champs de nouveau client
-            self.client_name = False
-            self.client_phone = False
-            self.client_email = False
-
     @api.onchange('client_id')
     def _onchange_client_id(self):
         """Pré-remplit les informations si client existant sélectionné"""
@@ -108,30 +97,43 @@ class GplExistingInstallationWizard(models.TransientModel):
 
     @api.onchange('license_plate')
     def _onchange_license_plate(self):
-        """Vérifie si le véhicule existe déjà"""
+        """Vérifie si le véhicule existe déjà - VERSION CORRIGÉE"""
         if self.license_plate:
             existing_vehicle = self.env['gpl.vehicle'].search([
                 ('license_plate', '=', self.license_plate)
             ], limit=1)
             if existing_vehicle:
-                raise ValidationError(_(
-                    'Un véhicule avec ce matricule existe déjà dans le système.\n'
-                    'Véhicule: %s\nClient: %s'
-                ) % (existing_vehicle.name, existing_vehicle.client_id.name))
-
+                # Utiliser warning au lieu de ValidationError pour ne pas bloquer
+                return {
+                    'warning': {
+                        'title': _('Véhicule existant'),
+                        'message': _('Un véhicule avec ce matricule existe déjà dans le système.\n'
+                                     'Véhicule: %s\nClient: %s') % (
+                                       existing_vehicle.name,
+                                       existing_vehicle.client_id.name if existing_vehicle.client_id else 'Non défini'
+                                   )
+                    }
+                }
     @api.onchange('reservoir_serial_number')
     def _onchange_reservoir_serial_number(self):
-        """Vérifie si le réservoir existe déjà"""
+        """Vérifie si le réservoir existe déjà - VERSION CORRIGÉE"""
         if self.reservoir_serial_number:
             existing_reservoir = self.env['stock.lot'].search([
                 ('name', '=', self.reservoir_serial_number),
                 ('product_id.is_gpl_reservoir', '=', True)
             ], limit=1)
             if existing_reservoir:
-                raise ValidationError(_(
-                    'Un réservoir avec ce numéro de série existe déjà dans le système.\n'
-                    'Réservoir: %s\nProduit: %s'
-                ) % (existing_reservoir.name, existing_reservoir.product_id.name))
+                # Utiliser warning au lieu de ValidationError
+                return {
+                    'warning': {
+                        'title': _('Réservoir existant'),
+                        'message': _('Un réservoir avec ce numéro de série existe déjà dans le système.\n'
+                                     'Réservoir: %s\nProduit: %s') % (
+                                       existing_reservoir.name,
+                                       existing_reservoir.product_id.name
+                                   )
+                    }
+                }
 
     def action_next_step(self):
         """Passe à l'étape suivante après validation"""
@@ -262,7 +264,8 @@ class GplExistingInstallationWizard(models.TransientModel):
             'color': self.color,
             'acquisition_date': self.acquisition_date,
             'client_id': client.id,
-            'status_id': self.env.ref('gpl_fleet.vehicle_status_termine').id,  # Installation déjà terminée
+            'status_id': self.env.ref('gpl_fleet.vehicle_status_termine').id,
+            'next_service_type': False,
         }
         return self.env['gpl.vehicle'].create(vehicle_vals)
 
@@ -375,7 +378,7 @@ class GplExistingInstallationWizard(models.TransientModel):
     @api.onchange('create_new_client')
     def _onchange_create_new_client(self):
         """Réinitialise les champs appropriés lorsque le type de client change"""
-        if self.create_new_client:
+        if self.create_new_client == 'new':
             # Si on passe à "Nouveau client", on efface le client sélectionné
             self.client_id = False
         else:

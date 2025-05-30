@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vue formulaire pour l'assistant de configuration -->
+    <record id="view_gpl_setup_wizard_form" model="ir.ui.view">
+        <field name="name">gpl.setup.wizard.form</field>
+        <field name="model">gpl.setup.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Assistant de Configuration GPL">
+                <header>
+                    <field name="step" widget="statusbar"
+                           statusbar_visible="welcome,company_info,technicians,products,settings,complete"/>
+                </header>
+
+                <sheet>
+                    <field name="step" invisible="1"/>
+
+                    <!-- ÉTAPE 1: BIENVENUE -->
+                    <div invisible="step != 'welcome'">
+                        <div class="oe_title text-center">
+                            <h1><i class="fa fa-fire text-primary" title =" " /> Configuration GPL</h1>
+                            <p class="lead">Bienvenue dans l'assistant de configuration du module GPL</p>
+                        </div>
+
+                        <div class="alert alert-info text-center"  role="alert">
+                            <h4>🚀 Configurons votre système GPL en quelques étapes !</h4>
+                            <p>Cet assistant vous guidera pour :</p>
+                            <ul class="list-unstyled">
+                                <li>✅ Configurer les informations de votre entreprise</li>
+                                <li>✅ Créer vos techniciens GPL</li>
+                                <li>✅ Définir vos types de réservoirs</li>
+                                <li>✅ Paramétrer le système selon vos besoins</li>
+                                <li>✅ Créer des données d'exemple (optionnel)</li>
+                            </ul>
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <p><strong>Durée estimée :</strong> 5-10 minutes</p>
+                            <p class="text-muted">Vous pourrez modifier ces paramètres plus tard dans la configuration.</p>
+                        </div>
+                    </div>
+
+                    <!-- ÉTAPE 2: INFORMATIONS ENTREPRISE -->
+                    <div invisible="step != 'company_info'">
+                        <div class="oe_title">
+                            <h1>🏢 Informations de votre entreprise</h1>
+                            <p>Configurez les informations liées à votre activité GPL.</p>
+                        </div>
+
+                        <group>
+                            <group string="Entreprise">
+                                <field name="company_name" readonly="1"/>
+                                <field name="has_gpl_license"/>
+                            </group>
+                            <group string="Certification GPL" invisible="has_gpl_license == False">
+                                <field name="license_number" required="has_gpl_license == True"/>
+                                <field name="certification_authority" placeholder="ex: BUREAU VERITAS"/>
+                            </group>
+                        </group>
+
+                        <div class="alert alert-warning" invisible="has_gpl_license == True"  role="alert">
+                            <strong>⚠️ Attention :</strong> Pour installer des réservoirs GPL, vous devez posséder
+                            les certifications et licences appropriées selon la réglementation en vigueur.
+                        </div>
+                    </div>
+
+                    <!-- ÉTAPE 3: TECHNICIENS -->
+                    <div invisible="step != 'technicians'">
+                        <div class="oe_title">
+                            <h1>👨‍🔧 Configuration des techniciens</h1>
+                            <p>Définissez les techniciens qui effectueront les installations GPL.</p>
+                        </div>
+
+                        <group>
+                            <field name="create_technicians"/>
+                        </group>
+
+                        <group invisible="create_technicians == False">
+                            <group string="Techniciens à créer">
+                                <field name="technician_names" nolabel="1"/>
+                            </group>
+                            <group string="Technicien par défaut">
+                                <field name="default_technician_id"
+                                       domain="[('job_title', 'ilike', 'technicien')]"
+                                       options="{'no_create': True}"/>
+                            </group>
+                        </group>
+
+                        <div class="alert alert-info" invisible="create_technicians == False"  role="alert">
+                            <strong>💡 Conseil :</strong> Le technicien par défaut sera automatiquement
+                            assigné aux nouvelles installations. Vous pourrez le modifier pour chaque installation.
+                        </div>
+                    </div>
+
+                    <!-- ÉTAPE 4: PRODUITS RÉSERVOIRS -->
+                    <div invisible="step != 'products'">
+                        <div class="oe_title">
+                            <h1>🛢️ Types de réservoirs GPL</h1>
+                            <p>Créez les produits réservoirs que vous installez couramment.</p>
+                        </div>
+
+                        <group>
+                            <field name="create_sample_products"/>
+                        </group>
+
+                        <group invisible="create_sample_products == False">
+                            <group string="Types de réservoirs à créer">
+                                <field name="reservoir_types" nolabel="1"/>
+                            </group>
+                        </group>
+
+                        <div class="alert alert-info" invisible="create_sample_products == False"  role="alert">
+                            <strong>📝 Format :</strong> Saisissez un type par ligne.
+                            Le système détectera automatiquement la capacité (ex: 60L) et la forme (Cylindrique/Toroïdal).
+                        </div>
+                    </div>
+
+                    <!-- ÉTAPE 5: PARAMÈTRES -->
+                    <div invisible="step != 'settings'">
+                        <div class="oe_title">
+                            <h1>⚙️ Paramètres du système</h1>
+                            <p>Configurez le comportement du système selon vos préférences.</p>
+                        </div>
+
+                        <group>
+                            <group string="Workflow d'installation">
+                                <field name="use_simplified_flow"/>
+                                <field name="auto_invoice" invisible="use_simplified_flow == False"/>
+                            </group>
+                            <group string="Gestion des réservoirs">
+                                <field name="reservoir_validity_years"/>
+                                <field name="warning_months"/>
+                                <field name="enable_alerts"/>
+                            </group>
+                        </group>
+
+                        <group>
+                            <group string="Données d'exemple (optionnel)">
+                                <field name="create_sample_data"/>
+                                <field name="sample_vehicles_count" invisible="create_sample_data == False"/>
+                                <field name="sample_reservoirs_count" invisible="create_sample_data == False"/>
+                            </group>
+                        </group>
+
+                        <div class="alert alert-success"  role="alert">
+                            <strong>✅ Flux simplifié recommandé :</strong>
+                            Active un workflow optimisé pour les petites structures
+                            (création automatique des bons de commande et livraison).
+                        </div>
+                    </div>
+
+                    <!-- ÉTAPE 6: TERMINÉ -->
+                    <div invisible="step != 'complete'">
+                        <div class="oe_title text-center">
+                            <h1><i class="fa fa-check-circle text-success fa-3x" title =" " /></h1>
+                            <h1>Configuration terminée !</h1>
+                            <p class="lead">Votre système GPL est maintenant prêt à être utilisé.</p>
+                        </div>
+
+                        <div class="alert alert-success"  role="alert">
+                            <h4>📊 Résumé de la configuration :</h4>
+                            <div class="row">
+                                <div class="col-6">
+                                    <ul class="list-unstyled">
+                                        <li>👨‍🔧 <strong>Techniciens créés :</strong> <field name="created_technicians_count" readonly="1"/></li>
+                                        <li>🛢️ <strong>Produits créés :</strong> <field name="created_products_count" readonly="1"/></li>
+                                    </ul>
+                                </div>
+                                <div class="col-6">
+                                    <ul class="list-unstyled">
+                                        <li>🚗 <strong>Véhicules d'exemple :</strong> <field name="created_vehicles_count" readonly="1"/></li>
+                                        <li>📦 <strong>Réservoirs d'exemple :</strong> <field name="created_reservoirs_count" readonly="1"/></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <h4>🚀 Prochaines étapes :</h4>
+                            <div class="row">
+                                <div class="col-4">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <i class="fa fa-car fa-2x text-primary" title =" " />
+                                            <h6 class="mt-2">Ajouter des véhicules</h6>
+                                            <small class="text-muted">Enregistrez vos premiers véhicules clients</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <i class="fa fa-cogs fa-2x text-success" title =" " />
+                                            <h6 class="mt-2">Créer une installation</h6>
+                                            <small class="text-muted">Démarrez votre première installation GPL</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <i class="fa fa-fire fa-2x text-info" title =" " />
+                                            <h6 class="mt-2">Gérer les réservoirs</h6>
+                                            <small class="text-muted">Suivez l'état de vos réservoirs</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </sheet>
+
+                <footer>
+                    <!-- Boutons de navigation -->
+                    <button string="Précédent"
+                            name="action_previous_step"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="step == 'welcome'"/>
+
+                    <button string="Suivant"
+                            name="action_next_step"
+                            type="object"
+                            class="btn-primary"
+                            invisible="step == 'complete'"/>
+
+                    <button string="🏠 Accueil GPL"
+                            name="action_open_dashboard"
+                            type="object"
+                            class="btn-success"
+                            invisible="step != 'complete'"/>
+
+                    <button string="Terminer"
+                            name="action_finish_setup"
+                            type="object"
+                            class="btn-primary"
+                            invisible="step != 'complete'"/>
+
+                    <button string="Annuler"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action pour l'assistant de configuration -->
+    <record id="action_gpl_setup_wizard" model="ir.actions.act_window">
+        <field name="name">Assistant de Configuration GPL</field>
+        <field name="res_model">gpl.setup.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="help" type="html">
+            <p>
+                Utilisez cet assistant pour configurer rapidement votre système GPL.
+                Il vous guidera à travers toutes les étapes nécessaires.
+            </p>
+        </field>
+    </record>
+
+
+</odoo>

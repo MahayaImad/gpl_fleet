@@ -132,10 +132,10 @@ class GplVehicle(models.Model):
 
     installation_id = fields.Many2one(
         'gpl.service.installation',
-        'Installation GPL',
-        readonly=False
+        string='Installation active',
+        readonly=True,
+        help="Installation GPL en cours pour ce véhicule"
     )
-
     repair_order_id = fields.Many2one(
         'gpl.repair.order',
         string='Réparation en cours',
