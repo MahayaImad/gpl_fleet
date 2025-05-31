@@ -123,7 +123,6 @@
                             </group>
                             <group string="Détails">
                                 <field name="model_year" placeholder="ex: 2020"/>
-                                <field name="color" placeholder="ex: Blanc"/>
                                 <field name="acquisition_date"/>
                             </group>
                         </group>

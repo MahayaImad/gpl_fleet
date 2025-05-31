@@ -62,13 +62,12 @@ class ResConfigSettings(models.TransientModel):
     )
 
     # === TEXTES LÉGAUX ===
-    gpl_certification_text = fields.Text(
+    gpl_certification_text = fields.Char(
         string='Texte de certification légale',
         config_parameter='gpl_fleet.certification_text',
+        size=2000,  # Taille suffisante pour le texte légal
         help="Texte légal qui apparaîtra sur les certificats de montage GPL",
-        default="""Certifions que le véhicule décrit ci-dessous a été équipé conformément aux prescriptions de l'arrêté
-du 31 Août 1983 relatif aux conditions d'équipement de surveillance et d'exploitation des installations
-de GPL équipant les véhicules automobiles."""
+        default="Certifions que le véhicule décrit ci-dessous a été équipé conformément aux prescriptions de l'arrêté du 31 Août 1983 relatif aux conditions d'équipement de surveillance et d'exploitation des installations de GPL équipant les véhicules automobiles."
     )
 
     # === STATISTIQUES EN LECTURE SEULE ===

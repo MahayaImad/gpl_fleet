@@ -76,7 +76,6 @@
                         <div>
                         <group string="Propréitaire">
                             <field name="active" invisible="1"/>
-                            <field name="vehicle_type" invisible="1"/>
                             <field name="client_id" />
                             <field name="client_phone" readonly="1"/>
                         </group>
@@ -103,10 +102,9 @@
                                         invisible="vin_sn == False"/>
                             </div>
                             <field name="model_year"/>
-                            <field name="color"/>
                             <field name="transmission"/>
-                            <label for="odometer" invisible="vehicle_type != 'car'"/>
-                            <div class="o_row o_hr_narrow_field" invisible="vehicle_type != 'car'">
+                            <label for="odometer"/>
+                            <div class="o_row o_hr_narrow_field">
                                 <field name="odometer"/>
                                 <field name="odometer_unit"/>
                             </div>
@@ -165,8 +163,6 @@
                 <field name="status_id"/>
                 <field name="next_service_type"/>
                 <field string="Properties" name="vehicle_properties"/>
-                <filter string="Bikes" name="bikes" domain="[('vehicle_type', '=', 'bike')]"/>
-                <filter string="Cars" name="cars" domain="[('vehicle_type', '=', 'car')]"/>
                 <!-- Ajout de filtres pour les rendez-vous -->
                 <filter string="Rendez-vous aujourd'hui" name="appointment_today" domain="[('appointment_date', '>=', context_today().strftime('%Y-%m-%d 00:00:00')), ('appointment_date', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
                 <filter string="Rendez-vous cette semaine" name="appointment_this_week" domain="[('appointment_date', '>=', (context_today() + relativedelta(weeks=-1, days=1, weekday=0)).strftime('%Y-%m-%d')), ('appointment_date', '&lt;', (context_today() + relativedelta(weeks=0, days=1, weekday=0)).strftime('%Y-%m-%d'))]"/>
@@ -202,7 +198,6 @@
                 records_draggable="0"
                 group_delete="false">
             <field name="status_id"/>
-            <field name="color"/>
             <field name="next_service_type"/>
             <field name="appointment_date"/>
             <field name="installation_id"/>
@@ -215,7 +210,7 @@
             <templates>
                 <t t-name="kanban-box">
                     <div t-attf-class="oe_kanban_global_click oe_kanban_card"
-                         t-attf-style="border-left: 5px solid #{record.color.raw_value ? record.color.raw_value : '#6c757d'};">
+                         t-attf-style="border-left: 5px solid #6c757d;">
                          <!-- Top menu positioned absolutely at the right -->
                         <div class="o_dropdown_kanban dropdown position-absolute top-0 end-0">
                             <a class="dropdown-toggle o-no-caret btn" role="button" data-bs-toggle="dropdown" data-bs-display="static" href="#" aria-label="Menu déroulant" title="Menu déroulant">
@@ -327,23 +322,6 @@
             Prêt à gérer votre flotte plus efficacement ?
           </p><p>
             Créons votre premier véhicule.
-          </p>
-        </field>
-    </record>
-
-
-    <!-- Définition d'une action spécifique pour la vue Kanban par statut -->
-    <record id='gpl_fleet_vehicle_status_action' model='ir.actions.act_window'>
-        <field name="name">Suivi des Véhicules</field>
-        <field name="res_model">gpl.vehicle</field>
-        <field name="view_mode">kanban,form</field>
-        <field name="view_id" ref="gpl_vehicle_status_kanban_view"/>
-        <field name="context">{'search_default_groupby_status': 1}</field>
-        <field name="help" type="html">
-          <p class="o_view_nocontent_smiling_face">
-            Gérez le flux de vos véhicules
-          </p><p>
-            Suivez l'évolution de chaque véhicule dans votre processus de service.
           </p>
         </field>
     </record>

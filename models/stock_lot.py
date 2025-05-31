@@ -51,11 +51,12 @@ class StockLotGplReservoir(models.Model):
     age_years = fields.Float(string="Âge (années)", compute='_compute_age_info', store=True)
     remaining_life_years = fields.Float(string="Durée de vie restante (années)",
                                         compute='_compute_age_info', store=True)
+    remaining_life_years_pourcentage = fields.Float(string="Durée de vie",
+                                                    compute='_compute_age_info', store=True)
     days_until_next_test = fields.Integer(string="Jours jusqu'à la prochaine réépreuve",
                                           compute='_compute_test_info', store=True)
 
     # === MÉTHODES DE CALCUL ===
-
     @api.depends('manufacturing_date')
     def _compute_age_info(self):
         """Calcule l'âge et la durée de vie restante"""
@@ -65,9 +66,11 @@ class StockLotGplReservoir(models.Model):
                 years_diff = (today - record.manufacturing_date).days / 365.25
                 record.age_years = years_diff
                 record.remaining_life_years = max(0, 15 - years_diff)
+                record.remaining_life_years_pourcentage = (record.remaining_life_years/15) * 100
             else:
                 record.age_years = 0
                 record.remaining_life_years = 0
+                record.remaining_life_years_pourcentage = 0
 
     @api.depends('last_test_date', 'certification_date')
     def _compute_next_test_date(self):

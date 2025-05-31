@@ -36,7 +36,6 @@ class GplExistingInstallationWizard(models.TransientModel):
     vin_sn = fields.Char(string='Numéro de châssis (VIN)')
     model_id = fields.Many2one('fleet.vehicle.model', string='Modèle')
     model_year = fields.Char(string='Année')
-    color = fields.Char(string='Couleur')
     acquisition_date = fields.Date(string="Date d'immatriculation", default=fields.Date.today)
 
     # === INFORMATIONS RÉSERVOIR ===
@@ -261,7 +260,6 @@ class GplExistingInstallationWizard(models.TransientModel):
             'vin_sn': self.vin_sn,
             'model_id': self.model_id.id,
             'model_year': self.model_year,
-            'color': self.color,
             'acquisition_date': self.acquisition_date,
             'client_id': client.id,
             'status_id': self.env.ref('gpl_fleet.vehicle_status_termine').id,

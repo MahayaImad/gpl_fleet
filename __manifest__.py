@@ -143,10 +143,6 @@
         ],
     },
 
-    # Données de démonstration (optionnel)
-    'demo': [
-        'demo/demo_data.xml',
-    ],
 
     # Installation et configuration
     'installable': True,
@@ -160,12 +156,6 @@
     # Version Odoo supportée
     'depends_version': '17.0',
 
-    # === FONCTIONNALITÉS AVANCÉES ===
-
-    # Post-installation
-    'post_init_hook': 'post_init_hook',
-    'uninstall_hook': 'uninstall_hook',
-
     # Configuration externe
     'external_dependencies': {
         'python': ['python-dateutil'],
@@ -177,9 +167,6 @@
     'images': [
         'static/description/banner.png',
         'static/description/icon.png',
-        'static/description/screenshot_dashboard.png',
-        'static/description/screenshot_vehicles.png',
-        'static/description/screenshot_reservoirs.png',
     ],
 
     # Support et maintenance

@@ -15,15 +15,16 @@
     <menuitem name="Atelier GPL" parent="gpl_menu_root" id="gpl_fleet_vehicles" sequence="2" />
 
     <!-- Sous-menus de l'Atelier GPL -->
-    <menuitem action="gpl_fleet_vehicle_action" parent="gpl_fleet_vehicles" name="Véhicules"
-        id="gpl_fleet_vehicle_menu" sequence="0"/>
-    <menuitem action="gpl_fleet_vehicle_status_action" parent="gpl_fleet_vehicles" name="Suivi du Flux"
-        id="gpl_fleet_vehicle_status_menu" sequence="1"/>
+    <menuitem action="gpl_fleet_vehicle_action"
+              parent="gpl_fleet_vehicles" 
+              name="Véhicules"
+              id="gpl_fleet_vehicle_menu" sequence="0"/>
+
     <menuitem id="menu_today_appointments"
               name="RDV du jour"
               parent="gpl_fleet_vehicles"
               action="action_today_appointments"
-              sequence="2"/>
+              sequence="1"/>
 
     <!-- Menu Opérations -->
     <menuitem id="menu_gpl_operations" name="Opérations" parent="gpl_menu_root" sequence="2"/>

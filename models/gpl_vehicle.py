@@ -56,16 +56,12 @@ class GplVehicle(models.Model):
         default=fields.Date.today,
         help="Date d'immatriculation du véhicule"
     )
-    color = fields.Char(
-        string="Couleur",
-        help='Couleur du véhicule'
-    )
 
     model_year = fields.Char(
         'Année',
         help='Année du modèle'
     )
-    vehicle_type = fields.Selection(related='model_id.vehicle_type')
+
     tag_ids = fields.Many2many(
          'gpl.vehicle.tag',
          'gpl_vehicle_vehicle_tag_rel',
@@ -74,10 +70,8 @@ class GplVehicle(models.Model):
          'Tags',
          copy=False
     )
-    odometer = fields.Float(
-        compute='_get_odometer',
-        inverse='_set_odometer',
-        string='Dernier relevé du compteur',
+    odometer = fields.Integer(
+        string='Kilométrage',
         help='Relevé du compteur kilométrique du véhicule au moment de cet enregistrement"'
     )
     odometer_unit = fields.Selection(
@@ -106,10 +100,7 @@ class GplVehicle(models.Model):
         definition='model_id.vehicle_properties_definition',
         copy=True
     )
-    odometer_count = fields.Integer(
-        compute="_compute_count_all",
-        string='Kilométrage'
-    )
+
     brand_id = fields.Many2one(
         'fleet.vehicle.model.brand',
         'Brand',
@@ -168,10 +159,6 @@ class GplVehicle(models.Model):
         for record in self:
             # Calcul du nombre d'installations liées au véhicule
             record.installation_count = self.env['gpl.service.installation'].search_count([
-                ('vehicle_id', '=', record.id)
-            ])
-            # Calcul du compteur kilométrique (code existant)
-            record.odometer_count = self.env['gpl.vehicle.odometer'].search_count([
                 ('vehicle_id', '=', record.id)
             ])
 
@@ -298,23 +285,6 @@ class GplVehicle(models.Model):
     def _compute_vehicle_name(self):
         for record in self:
             record.name = f"{record.model_id.brand_id.name or ''}/{record.model_id.name or ''}/{record.license_plate or _('No Plate')}"
-
-    def _get_odometer(self):
-        GPLVehicleOdometer = self.env['gpl.vehicle.odometer']
-        for record in self:
-            vehicle_odometer = GPLVehicleOdometer.search(
-                [('vehicle_id', '=', record.id)],
-                limit=1,
-                order='value desc'
-            )
-            record.odometer = vehicle_odometer.value if vehicle_odometer else 0
-
-    def _set_odometer(self):
-        for record in self:
-            if record.odometer:
-                date = fields.Date.context_today(record)
-                data = {'value': record.odometer, 'date': date, 'vehicle_id': record.id}
-                self.env['gpl.vehicle.odometer'].create(data)
 
     @api.model
     def _read_group_status_ids(self, statuses, domain, order):

@@ -1,0 +1,186 @@
+/*
+ * GPL Fleet Module - CSS personnalisé
+ * Version 2.0 pour Odoo 17
+ */
+
+/* === STYLES GÉNÉRAUX GPL === */
+.gpl-module {
+    font-family: 'Roboto', Arial, sans-serif;
+}
+
+/* === DASHBOARD RÉSERVOIRS === */
+.gpl-reservoir-dashboard .card {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+}
+
+.gpl-reservoir-dashboard .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* === KANBAN VÉHICULES === */
+.gpl-vehicle-kanban .oe_kanban_card {
+    border-radius: 6px;
+    border-left-width: 4px;
+}
+
+/* === BADGES ET ÉTATS === */
+.gpl-state-badge {
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+}
+
+.gpl-state-valid {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.gpl-state-warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.gpl-state-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* === FORMULAIRES === */
+.gpl-form-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+}
+
+.gpl-form-section h4 {
+    margin-bottom: 15px;
+    color: #495057;
+    font-weight: 600;
+}
+
+/* === PROGRESS BARS === */
+.gpl-progress {
+    height: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    background-color: #e9ecef;
+}
+
+.gpl-progress-bar {
+    transition: width 0.3s ease;
+    font-size: 0.75em;
+    line-height: 20px;
+    text-align: center;
+    color: white;
+}
+
+/* === ALERTES SPÉCIFIQUES === */
+.gpl-alert-reservoir {
+    border-left: 4px solid #dc3545;
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 12px 16px;
+    margin: 10px 0;
+    border-radius: 4px;
+}
+
+.gpl-alert-success {
+    border-left: 4px solid #28a745;
+    background-color: #d4edda;
+    color: #155724;
+    padding: 12px 16px;
+    margin: 10px 0;
+    border-radius: 4px;
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+    .gpl-reservoir-dashboard .card {
+        margin-bottom: 15px;
+    }
+
+    .gpl-form-section {
+        padding: 10px;
+    }
+}
+
+/* === ANIMATIONS === */
+@keyframes gpl-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.gpl-loading {
+    animation: gpl-pulse 2s infinite;
+}
+
+/* === ICÔNES GPL === */
+.gpl-icon {
+    margin-right: 5px;
+    font-size: 1.1em;
+}
+
+.gpl-icon-reservoir {
+    color: #007bff;
+}
+
+.gpl-icon-vehicle {
+    color: #28a745;
+}
+
+.gpl-icon-warning {
+    color: #ffc107;
+}
+
+.gpl-icon-danger {
+    color: #dc3545;
+}
+
+/* === BOUTONS SPÉCIALISÉS === */
+.btn-gpl-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.btn-gpl-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    transform: translateY(-1px);
+}
+
+/* === TABLES PERSONNALISÉES === */
+.gpl-table {
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.gpl-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+}
+
+/* === STATUTS RÉSERVOIRS === */
+.reservoir-status-valid {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.reservoir-status-expiring {
+    color: #ffc107;
+    font-weight: 600;
+}
+
+.reservoir-status-expired {
+    color: #dc3545;
+    font-weight: 600;
+}
