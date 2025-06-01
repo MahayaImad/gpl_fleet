@@ -102,6 +102,7 @@
         # Véhicules et suivi
         'views/fleet_vehicle_model_views.xml',
         'views/gpl_vehicle_views.xml',
+        'views/calendar_views.xml',
 
         # Réservoirs (nouveau système amélioré)
         'views/gpl_reservoir_views.xml',

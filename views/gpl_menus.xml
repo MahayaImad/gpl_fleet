@@ -16,7 +16,7 @@
 
     <!-- Sous-menus de l'Atelier GPL -->
     <menuitem action="gpl_fleet_vehicle_action"
-              parent="gpl_fleet_vehicles" 
+              parent="gpl_fleet_vehicles"
               name="Véhicules"
               id="gpl_fleet_vehicle_menu" sequence="0"/>
 
@@ -25,6 +25,45 @@
               parent="gpl_fleet_vehicles"
               action="action_today_appointments"
               sequence="1"/>
+
+    <menuitem id="menu_gpl_planning_section"
+              name="📅 Planning Atelier"
+              parent="gpl_fleet_vehicles"
+              sequence="1"/>
+
+    <!-- Sous-menus de planning -->
+    <menuitem id="menu_gpl_calendar_month"
+              name="Vue Mensuelle"
+              parent="menu_gpl_planning_section"
+              action="action_gpl_vehicle_calendar_planning"
+              sequence="10"/>
+
+    <menuitem id="menu_gpl_calendar_week"
+              name="Vue Hebdomadaire"
+              parent="menu_gpl_planning_section"
+              action="action_gpl_vehicle_calendar_week_planning"
+              sequence="20"/>
+
+    <menuitem id="menu_today_appointments_enhanced"
+              name="RDV Aujourd'hui"
+              parent="menu_gpl_planning_section"
+              action="action_today_appointments"
+              sequence="30"/>
+
+    <!-- Séparateur -->
+    <menuitem id="menu_gpl_planning_separator"
+              name="─── Actions Rapides ───"
+              parent="menu_gpl_planning_section"
+              sequence="40"/>
+
+    <!-- Actions rapides -->
+    <menuitem id="menu_gpl_quick_appointment"
+              name="➕ Nouveau RDV"
+              parent="menu_gpl_planning_section"
+              action="action_gpl_quick_appointment_wizard"
+              sequence="50"/>
+
+
 
     <!-- Menu Opérations -->
     <menuitem id="menu_gpl_operations" name="Opérations" parent="gpl_menu_root" sequence="2"/>
@@ -241,4 +280,78 @@
     <menuitem name="Véhicule" parent="gpl_fleet_configuration" id="gpl_fleet_vehicles_configuration" sequence="30" />
     <menuitem id="gpl_fleet_vehicle_tag_menu" parent="gpl_fleet_vehicles_configuration" action="gpl_fleet_vehicle_tag_action" sequence="20"/>
 
+        <!-- CSS personnalisé pour améliorer l'affichage du calendrier -->
+    <template id="gpl_calendar_assets" name="GPL Calendar Assets">
+        <xpath expr="." position="inside">
+            <style>
+                /* Styles pour améliorer l'affichage du calendrier GPL */
+                .fc-event-container {
+                    padding: 2px 4px;
+                    font-size: 11px;
+                    line-height: 1.2;
+                }
+
+                .fc-event-week {
+                    padding: 1px 3px;
+                    font-size: 10px;
+                }
+
+                /* Couleurs spécifiques selon le type de service */
+                .fc-event[data-service-type="installation"] {
+                    background-color: #28a745 !important;
+                    border-color: #1e7e34 !important;
+                }
+
+                .fc-event[data-service-type="repair"] {
+                    background-color: #dc3545 !important;
+                    border-color: #c82333 !important;
+                }
+
+                .fc-event[data-service-type="inspection"] {
+                    background-color: #17a2b8 !important;
+                    border-color: #138496 !important;
+                }
+
+                .fc-event[data-service-type="testing"] {
+                    background-color: #ffc107 !important;
+                    border-color: #e0a800 !important;
+                    color: #212529 !important;
+                }
+
+                /* Style pour les événements urgents */
+                .fc-event.priority-high {
+                    border: 2px solid #ff0000 !important;
+                    box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+                }
+
+                /* Style pour les événements en retard */
+                .fc-event.overdue {
+                    background: repeating-linear-gradient(
+                        45deg,
+                        #dc3545,
+                        #dc3545 10px,
+                        #c82333 10px,
+                        #c82333 20px
+                    ) !important;
+                }
+
+                /* Amélioration de la lisibilité */
+                .fc-event .badge {
+                    font-size: 8px;
+                    padding: 1px 3px;
+                }
+
+                .fc-event a {
+                    color: white !important;
+                    text-decoration: none;
+                }
+
+                /* Styles pour les boutons de statut */
+                .badge-sm {
+                    font-size: 9px;
+                    padding: 1px 4px;
+                }
+            </style>
+        </xpath>
+    </template>
 </odoo>

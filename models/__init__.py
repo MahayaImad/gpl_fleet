@@ -12,6 +12,7 @@ from . import gpl_reservoir_fabriquant
 
 # === VÉHICULES ET SUIVI ===
 from . import gpl_vehicle
+from . import gpl_reschedule_wizard
 from . import gpl_vehicle_tag
 from . import gpl_vehicle_odometer
 

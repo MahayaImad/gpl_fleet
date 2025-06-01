@@ -1,4 +1,5 @@
 from odoo import models, fields, api, _
+from datetime import datetime, timedelta
 import logging
 
 from odoo.exceptions import UserError
@@ -31,6 +32,51 @@ class GplVehicle(models.Model):
     appointment_date = fields.Datetime('Date de Rendez-vous', tracking=True)
     engineer_validation_date = fields.Date('Date de Validation', tracking=True)
     validation_certificate = fields.Char('Numéro de Certificat de Validation', tracking=True)
+
+    # === NOUVEAUX CHAMPS POUR LE CALENDRIER ===
+
+    # Durée estimée du service en heures
+    estimated_duration = fields.Float(
+        string='Durée estimée (heures)',
+        compute='_compute_estimated_duration',
+        store=True,
+        help="Durée estimée du service en heures selon le type d'intervention"
+    )
+
+    # RDV toute la journée
+    appointment_all_day = fields.Boolean(
+        string='Toute la journée',
+        default=False,
+        help="Cocher si le rendez-vous/service prend toute la journée"
+    )
+
+    # Technicien assigné pour ce RDV
+    assigned_technician_id = fields.Many2one(
+        'hr.employee',
+        string='Technicien assigné',
+        help="Technicien principal assigné à ce rendez-vous"
+    )
+
+    # Priorité du service
+    service_priority = fields.Selection([
+        ('low', 'Normale'),
+        ('medium', 'Importante'),
+        ('high', 'Urgente')
+    ], string='Priorité', default='low', tracking=True)
+
+    # Couleur pour le calendrier (calculée automatiquement)
+    color = fields.Integer(
+        string='Couleur',
+        compute='_compute_calendar_color',
+        store=True,
+        help="Couleur pour l'affichage calendrier"
+    )
+
+    # Informations de contact
+    appointment_notes = fields.Text(
+        string='Notes du rendez-vous',
+        help="Notes spécifiques pour ce rendez-vous"
+    )
 
     license_plate = fields.Char(
         string="Matricule",
@@ -315,6 +361,9 @@ class GplVehicle(models.Model):
             ('state', 'in', ['draft', 'planned', 'in_progress'])  # États non terminés
         ], limit=1)
 
+        installations = self.env['gpl.service.installation'].search([('vehicle_id', '=', self.id)])
+        installation_count = len(installations)
+
         if existing_installation:
             # S'il y a une installation existante non terminée, l'ouvrir
             return {
@@ -324,8 +373,21 @@ class GplVehicle(models.Model):
                 'res_id': existing_installation.id,
                 'type': 'ir.actions.act_window',
             }
+
         # Récupération du statut "En service"
         in_progress_status = self.env.ref('gpl_fleet.vehicle_status_en_service', raise_if_not_found=False)
+
+        # Si une seule installation existe, l'ouvrir directement
+        if installation_count == 1:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': 'Installation GPL',
+                'res_model': 'gpl.service.installation',
+                'view_mode': 'form',
+                'res_id': installations.id,  # ID de l'installation unique
+                'target': 'current',
+                'context': {'default_vehicle_id': self.id}
+            }
 
         # Création de l'installation
         installation_vals = {
@@ -518,6 +580,263 @@ class GplVehicle(models.Model):
             'res_id': testing.id,
             'type': 'ir.actions.act_window',
         }
+
+    @api.depends('next_service_type', 'service_priority')
+    def _compute_estimated_duration(self):
+        """Calcule la durée estimée selon le type de service"""
+        duration_mapping = {
+            'installation': {
+                'low': 4.0,  # Installation normale: 4h
+                'medium': 5.0,  # Installation complexe: 5h
+                'high': 6.0  # Installation urgente/difficile: 6h
+            },
+            'repair': {
+                'low': 2.0,  # Réparation simple: 2h
+                'medium': 4.0,  # Réparation moyenne: 4h
+                'high': 6.0  # Réparation complexe: 6h
+            },
+            'inspection': {
+                'low': 1.0,  # Contrôle simple: 1h
+                'medium': 1.5,  # Contrôle approfondi: 1.5h
+                'high': 2.0  # Contrôle avec problèmes: 2h
+            },
+            'testing': {
+                'low': 3.0,  # Réépreuve normale: 3h
+                'medium': 4.0,  # Réépreuve avec réparation: 4h
+                'high': 5.0  # Réépreuve complexe: 5h
+            }
+        }
+
+        for record in self:
+            service_type = record.next_service_type or 'repair'
+            priority = record.service_priority or 'low'
+
+            if service_type in duration_mapping:
+                record.estimated_duration = duration_mapping[service_type].get(priority, 2.0)
+            else:
+                record.estimated_duration = 2.0  # Durée par défaut
+
+    @api.depends('next_service_type', 'service_priority', 'appointment_date')
+    def _compute_calendar_color(self):
+        """Calcule la couleur pour l'affichage calendrier"""
+        from datetime import datetime, timedelta
+
+        for record in self:
+            color = 0  # Couleur par défaut
+
+            # Couleur selon le type de service
+            if record.next_service_type == 'installation':
+                color = 5  # Vert
+            elif record.next_service_type == 'repair':
+                color = 1  # Rouge
+            elif record.next_service_type == 'inspection':
+                color = 4  # Bleu
+            elif record.next_service_type == 'testing':
+                color = 3  # Jaune
+
+            # Modifier la couleur selon la priorité
+            if record.service_priority == 'high':
+                color = 1  # Rouge pour urgent
+            elif record.service_priority == 'medium' and color != 1:
+                color = 3  # Orange pour important
+
+            # Couleur spéciale pour les RDV en retard
+            if record.appointment_date:
+                appointment_date = fields.Datetime.from_string(record.appointment_date)
+                if appointment_date < datetime.now():
+                    color = 1  # Rouge pour retard
+
+            record.color = color
+
+    # === MÉTHODES D'ACTION AMÉLIORÉES ===
+
+    def action_schedule_appointment(self):
+        """Action pour programmer un rendez-vous"""
+        self.ensure_one()
+
+        # Vérifier que les prérequis sont remplis
+        if not self.next_service_type:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Type de service requis'),
+                    'message': _('Veuillez d\'abord définir le type de service à effectuer.'),
+                    'type': 'warning',
+                }
+            }
+
+        return {
+            'name': _('Programmer un rendez-vous'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'gpl.vehicle',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_appointment_date': fields.Datetime.now(),
+                'focus_appointment': True
+            }
+        }
+
+    def action_start_service(self):
+        """Démarre le service selon le type prévu"""
+        self.ensure_one()
+
+        if not self.next_service_type:
+            raise UserError(_("Aucun type de service défini pour ce véhicule."))
+
+        if self.next_service_type == 'installation':
+            return self.action_create_installation()
+        elif self.next_service_type == 'repair':
+            return self.action_create_new_repair()
+        elif self.next_service_type == 'inspection':
+            return self.action_create_inspection()
+        elif self.next_service_type == 'testing':
+            return self.action_create_reservoir_testing()
+        else:
+            raise UserError(_("Type de service non reconnu: %s") % self.next_service_type)
+
+    def action_reschedule_appointment(self):
+        """Reprogramme un rendez-vous"""
+        self.ensure_one()
+
+        return {
+            'name': _('Reprogrammer le rendez-vous'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'gpl.vehicle.reschedule.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_vehicle_id': self.id,
+                'default_current_date': self.appointment_date,
+                'default_service_type': self.next_service_type
+            }
+        }
+
+    def action_complete_appointment(self):
+        """Marque le rendez-vous comme terminé"""
+        self.ensure_one()
+
+        # Mettre à jour le statut
+        completed_status = self.env.ref('gpl_fleet.vehicle_status_termine', raise_if_not_found=False)
+        if completed_status:
+            self.write({
+                'status_id': completed_status.id,
+                'appointment_date': False,
+                'next_service_type': False,
+                'assigned_technician_id': False
+            })
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Rendez-vous terminé'),
+                'message': _('Le rendez-vous pour %s a été marqué comme terminé.') % self.name,
+                'type': 'success',
+            }
+        }
+
+    # === MÉTHODES DE RECHERCHE POUR LE CALENDRIER ===
+
+    @api.model
+    def get_today_appointments(self):
+        """Retourne les rendez-vous du jour"""
+        today = fields.Date.today()
+        return self.search([
+            ('appointment_date', '>=', today.strftime('%Y-%m-%d 00:00:00')),
+            ('appointment_date', '<=', today.strftime('%Y-%m-%d 23:59:59'))
+        ])
+
+    @api.model
+    def get_week_appointments(self):
+        """Retourne les rendez-vous de la semaine"""
+        from datetime import datetime, timedelta
+
+        today = datetime.now().date()
+        start_week = today - timedelta(days=today.weekday())
+        end_week = start_week + timedelta(days=6)
+
+        return self.search([
+            ('appointment_date', '>=', start_week.strftime('%Y-%m-%d 00:00:00')),
+            ('appointment_date', '<=', end_week.strftime('%Y-%m-%d 23:59:59'))
+        ])
+
+    @api.model
+    def get_late_appointments(self):
+        """Retourne les rendez-vous en retard"""
+        now = fields.Datetime.now()
+        return self.search([
+            ('appointment_date', '<', now),
+            ('status_id.is_done', '!=', True)
+        ])
+
+    # === CONTRAINTES ET VALIDATIONS ===
+
+    @api.constrains('appointment_date', 'assigned_technician_id')
+    def _check_technician_availability(self):
+        """Vérifie que le technicien n'est pas déjà occupé à ce créneau"""
+        for record in self:
+            if record.appointment_date and record.assigned_technician_id:
+                # Chercher les conflits (même technicien, même créneau)
+                conflicting_appointments = self.search([
+                    ('id', '!=', record.id),
+                    ('assigned_technician_id', '=', record.assigned_technician_id.id),
+                    ('appointment_date', '!=', False)
+                ])
+
+                for appointment in conflicting_appointments:
+                    if appointment.appointment_date and record.appointment_date:
+                        app_start = fields.Datetime.from_string(appointment.appointment_date)
+                        app_end = app_start + timedelta(hours=appointment.estimated_duration or 2)
+
+                        rec_start = fields.Datetime.from_string(record.appointment_date)
+                        rec_end = rec_start + timedelta(hours=record.estimated_duration or 2)
+
+                        # Vérifier le chevauchement
+                        if not (rec_end <= app_start or rec_start >= app_end):
+                            raise ValidationError(_(
+                                "Le technicien %s est déjà occupé sur ce créneau.\n"
+                                "Conflit avec: %s (%s)"
+                            ) % (
+                                                      record.assigned_technician_id.name,
+                                                      appointment.name,
+                                                      appointment.appointment_date
+                                                  ))
+
+    # === NOTIFICATIONS AUTOMATIQUES ===
+
+    def _send_appointment_reminder(self):
+        """Envoie des rappels de rendez-vous"""
+        tomorrow = fields.Date.today() + timedelta(days=1)
+        appointments_tomorrow = self.search([
+            ('appointment_date', '>=', tomorrow.strftime('%Y-%m-%d 00:00:00')),
+            ('appointment_date', '<=', tomorrow.strftime('%Y-%m-%d 23:59:59'))
+        ])
+
+        for appointment in appointments_tomorrow:
+            # Créer une activité de rappel
+            self.env['mail.activity'].create({
+                'activity_type_id': self.env.ref('mail.mail_activity_data_call').id,
+                'summary': f'Rappel RDV - {appointment.name}',
+                'note': f'''Rendez-vous prévu demain pour:
+                - Véhicule: {appointment.name}
+                - Client: {appointment.client_id.name}
+                - Service: {appointment.next_service_type}
+                - Heure: {appointment.appointment_date}
+                - Durée estimée: {appointment.estimated_duration}h''',
+                'res_model_id': self.env['ir.model']._get('gpl.vehicle').id,
+                'res_id': appointment.id,
+                'user_id': appointment.assigned_technician_id.user_id.id if appointment.assigned_technician_id.user_id else self.env.uid,
+                'date_deadline': fields.Date.today(),
+            })
+
+    @api.model
+    def _cron_appointment_reminders(self):
+        """Tâche cron pour les rappels de rendez-vous"""
+        self._send_appointment_reminder()
+        return True
 class FleetVehicleModel(models.Model):
     _inherit = 'fleet.vehicle.model'
 

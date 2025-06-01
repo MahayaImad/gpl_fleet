@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vue formulaire pour l'assistant de reprogrammation -->
+    <record id="view_gpl_vehicle_reschedule_wizard_form" model="ir.ui.view">
+        <field name="name">gpl.vehicle.reschedule.wizard.form</field>
+        <field name="model">gpl.vehicle.reschedule.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reprogrammer le rendez-vous">
+                <div class="alert alert-info" role="alert">
+                    <strong><i class="fa fa-calendar" title=" " /> Reprogrammation de rendez-vous</strong><br/>
+                    Modifiez la date et les détails du rendez-vous pour ce véhicule.
+                </div>
+
+                <group>
+                    <group string="Informations du véhicule">
+                        <field name="vehicle_id" readonly="1"/>
+                        <field name="client_id" readonly="1"/>
+                        <field name="service_type" readonly="1"/>
+                        <field name="estimated_duration" readonly="1"/>
+                    </group>
+                    <group string="Rendez-vous actuel">
+                        <field name="current_date" readonly="1"/>
+                    </group>
+                </group>
+
+                <group>
+                    <group string="Nouveau rendez-vous">
+                        <field name="new_date" required="1"/>
+                        <field name="new_technician_id" options="{'no_create': True}"/>
+                        <field name="new_priority"/>
+                    </group>
+                    <group string="Notification">
+                        <field name="notify_client"/>
+                        <field name="reason" placeholder="Raison de la reprogrammation..."/>
+                    </group>
+                </group>
+
+                <footer>
+                    <button string="Reprogrammer" name="action_reschedule" type="object" class="btn-primary"/>
+                    <button string="Annuler" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vue formulaire pour l'assistant de création rapide -->
+    <record id="view_gpl_quick_appointment_wizard_form" model="ir.ui.view">
+        <field name="name">gpl.quick.appointment.wizard.form</field>
+        <field name="model">gpl.quick.appointment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Nouveau rendez-vous">
+                <div class="alert alert-success" role="alert">
+                    <strong><i class="fa fa-plus-circle" title=" " /> Nouveau rendez-vous</strong><br/>
+                    Programmez rapidement un nouveau rendez-vous pour ce véhicule.
+                </div>
+
+                <group>
+                    <group string="Véhicule">
+                        <field name="vehicle_id" readonly="1"/>
+                    </group>
+                </group>
+
+                <group>
+                    <group string="Détails du rendez-vous">
+                        <field name="appointment_date" required="1"/>
+                        <field name="service_type" required="1"/>
+                        <field name="priority"/>
+                        <field name="all_day"/>
+                    </group>
+                    <group string="Assignation">
+                        <field name="technician_id" options="{'no_create': True}"/>
+                        <field name="notes" placeholder="Notes spécifiques pour ce rendez-vous..."/>
+                    </group>
+                </group>
+
+                <footer>
+                    <button string="Créer le rendez-vous" name="action_create_appointment" type="object" class="btn-primary"/>
+                    <button string="Annuler" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action pour l'assistant de reprogrammation -->
+    <record id="action_gpl_vehicle_reschedule_wizard" model="ir.actions.act_window">
+        <field name="name">Reprogrammer le rendez-vous</field>
+        <field name="res_model">gpl.vehicle.reschedule.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Action pour l'assistant de création rapide -->
+    <record id="action_gpl_quick_appointment_wizard" model="ir.actions.act_window">
+        <field name="name">Nouveau rendez-vous</field>
+        <field name="res_model">gpl.quick.appointment.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    ->
+
+    <!-- Template d'email pour les notifications de reprogrammation -->
+    <record id="email_template_appointment_reschedule" model="mail.template">
+        <field name="name">Notification - Reprogrammation RDV GPL</field>
+        <field name="model_id" ref="model_gpl_vehicle"/>
+        <field name="subject">Modification de votre rendez-vous GPL - ${object.license_plate}</field>
+        <field name="body_html"><![CDATA[
+<div style="margin: 0px; padding: 0px;">
+    <p>Bonjour ${object.client_id.name},</p>
+
+    <p>Nous vous informons que votre rendez-vous pour l'installation/maintenance GPL de votre véhicule <strong>${object.license_plate}</strong> a été modifié :</p>
+
+    <table border="1" style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+        <tr style="background-color: #f0f0f0;">
+            <td style="padding: 10px;"><strong>Véhicule</strong></td>
+            <td style="padding: 10px;">${object.name}</td>
+        </tr>
+        <tr>
+            <td style="padding: 10px;"><strong>Type de service</strong></td>
+            <td style="padding: 10px;">${object.next_service_type}</td>
+        </tr>
+        <tr style="background-color: #f0f0f0;">
+            <td style="padding: 10px;"><strong>Nouveau rendez-vous</strong></td>
+            <td style="padding: 10px;">${object.appointment_date}</td>
+        </tr>
+        % if object.assigned_technician_id:
+        <tr>
+            <td style="padding: 10px;"><strong>Technicien assigné</strong></td>
+            <td style="padding: 10px;">${object.assigned_technician_id.name}</td>
+        </tr>
+        % endif
+        % if object.estimated_duration:
+        <tr style="background-color: #f0f0f0;">
+            <td style="padding: 10px;"><strong>Durée estimée</strong></td>
+            <td style="padding: 10px;">${object.estimated_duration} heures</td>
+        </tr>
+        % endif
+    </table>
+
+    % if object.appointment_notes:
+    <p><strong>Notes :</strong></p>
+    <p style="border-left: 3px solid #007bff; padding-left: 15px; color: #555;">
+        ${object.appointment_notes}
+    </p>
+    % endif
+
+    <p>En cas de questions ou si vous souhaitez modifier ce rendez-vous, n'hésitez pas à nous contacter.</p>
+
+    <p>Cordialement,<br/>
+    L'équipe ${object.company_id.name}</p>
+</div>
+        ]]></field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+    <!-- Mise à jour des menus pour inclure les nouveaux calendriers
+    <record id="action_gpl_vehicle_calendar_planning" model="ir.actions.act_window">
+        <field name="name">📅 Planning Mensuel</field>
+        <field name="res_model">gpl.vehicle</field>
+        <field name="view_mode">calendar</field>
+        <field name="view_id" ref="gpl_fleet_vehicle_view_calendar"/>
+        <field name="domain">[('appointment_date', '!=', False)]</field>
+        <field name="context">{
+            'search_default_this_month': 1,
+            'calendar_default_mode': 'month'
+        }</field>
+    </record>
+
+    <record id="menu_gpl_calendar_week" model="ir.actions.act_window">
+        <field name="name">📅 Planning Hebdomadaire</field>
+        <field name="res_model">gpl.vehicle</field>
+        <field name="view_mode">calendar</field>
+        <field name="view_id" ref="gpl_fleet_vehicle_view_calendar_week"/>
+        <field name="domain">[('appointment_date', '!=', False)]</field>
+        <field name="context">{
+            'search_default_this_week': 1,
+            'calendar_default_mode': 'week'
+        }</field>
+    </record>-->
+
+    <!-- Tâche CRON pour les rappels automatiques -->
+    <record id="ir_cron_appointment_reminders" model="ir.cron">
+        <field name="name">GPL - Rappels de rendez-vous</field>
+        <field name="model_id" ref="model_gpl_vehicle"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_appointment_reminders()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+        <field name="doall" eval="False"/>
+    </record>
+
+</odoo>
