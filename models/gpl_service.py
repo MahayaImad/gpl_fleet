@@ -17,10 +17,10 @@ class GplService(models.Model):
                                        domain="[('product_id.is_gpl_reservoir', '=', True)]", tracking=True)
     certification_number = fields.Char(related="reservoir_lot_id.certification_number",
                                        string="N° certification", readonly=True)
-    certification_date = fields.Date(related="reservoir_lot_id.certification_date",
-                                     string="Date certification", readonly=True)
-    expiry_date = fields.Date(related="reservoir_lot_id.expiry_date",
-                              string="Date expiration", readonly=True)
+    last_test_date = fields.Date(related="reservoir_lot_id.last_test_date",
+                                     string="Date de dernière épreuve", readonly=True)
+    next_test_date = fields.Date(related="reservoir_lot_id.next_test_date",
+                              string="Date Prochaine Epreuve", readonly=True)
     reservoir_state = fields.Selection(related="reservoir_lot_id.state",
                                        string="État du réservoir", readonly=True)
     serial_number = fields.Char(related="reservoir_lot_id.name", string="N° série réservoir", readonly=True)
@@ -71,6 +71,26 @@ class GplService(models.Model):
     etancheite_pressure = fields.Float(string="Pression test étanchéité (bars)", default=10.0,
                                        help="Pression utilisée pour le test d'étanchéité du système GPL")
     use_simplified_flow = fields.Boolean(string="Flux simplifié", compute='_compute_use_simplified_flow')
+
+    # === CHAMPS POUR BORDEREAU D'ENVOI ===
+    sent_in_bordereau = fields.Boolean(
+        string="Envoyé dans bordereau",
+        default=False,
+        tracking=True,
+        help="Indique si cette installation a été incluse dans un bordereau d'envoi vers les autorités"
+    )
+    bordereau_date = fields.Datetime(
+        string="Date d'envoi bordereau",
+        readonly=True,
+        tracking=True,
+        help="Date à laquelle l'installation a été incluse dans un bordereau d'envoi"
+    )
+    bordereau_reference = fields.Char(
+        string="Référence bordereau",
+        readonly=True,
+        help="Référence du bordereau dans lequel cette installation a été incluse"
+    )
+    # ==================================
 
     @api.depends('company_id')
     def _compute_use_simplified_flow(self):
@@ -818,6 +838,78 @@ class GplService(models.Model):
 du 31 Août 1983 relatif aux conditions d'équipement de surveillance et d'exploitation des installations
 de GPL équipant les véhicules automobiles."""
         )
+
+    # === MÉTHODES POUR GESTION BORDEREAU ===
+    def mark_as_sent_in_bordereau(self):
+        """Marque les installations comme envoyées dans un bordereau"""
+        if not self:
+            return
+
+        # Générer une référence unique pour ce bordereau
+        bordereau_ref = self.env['ir.sequence'].next_by_code('gpl.bordereau') or \
+                        f"BOR-{fields.Date.today().strftime('%Y%m%d')}-{len(self)}"
+
+        # Mettre à jour les enregistrements
+        self.write({
+            'sent_in_bordereau': True,
+            'bordereau_date': fields.Datetime.now(),
+            'bordereau_reference': bordereau_ref
+        })
+
+        # Message de suivi pour chaque installation
+        for installation in self:
+            installation.message_post(
+                body=_("Installation incluse dans le bordereau d'envoi %s le %s") % (
+                    bordereau_ref,
+                    fields.Datetime.now().strftime('%d/%m/%Y à %H:%M')
+                )
+            )
+
+        return bordereau_ref
+
+    def action_unmark_bordereau(self):
+        """Retire le marquage d'envoi (action administrative)"""
+        for installation in self:
+            if installation.sent_in_bordereau:
+                installation.write({
+                    'sent_in_bordereau': False,
+                    'bordereau_date': False,
+                    'bordereau_reference': False
+                })
+                installation.message_post(
+                    body=_("Marquage d'envoi en bordereau retiré par %s") % self.env.user.name
+                )
+
+    @api.model
+    def get_installations_for_bordereau(self, date_from=None, date_to=None, only_completed=True):
+        """Retourne les installations éligibles pour un bordereau"""
+        domain = []
+
+        if date_from:
+            domain.append(('date_service', '>=', date_from))
+        if date_to:
+            domain.append(('date_service', '<=', date_to))
+        if only_completed:
+            domain.append(('state', '=', 'done'))
+
+        # Exclure celles déjà envoyées par défaut
+        domain.append(('sent_in_bordereau', '=', False))
+
+        return self.search(domain, order='date_service asc')
+
+    def action_view_bordereau_history(self):
+        """Affiche l'historique des bordereaux"""
+        return {
+            'name': _('Historique des bordereaux'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'gpl.service.installation',
+            'view_mode': 'tree',
+            'domain': [('sent_in_bordereau', '=', True)],
+            'context': {
+                'search_default_group_bordereau_reference': 1,
+                'search_default_group_bordereau_date': 1,
+            }
+        }
 
 
 class GplInstallationLine(models.Model):

@@ -43,7 +43,7 @@
                             <field name="old_certification_date" readonly="1"/>
                             <field name="new_certification_number" required ="state == 'passed'" readonly ="state in ['passed', 'failed', 'canceled']"/>
                             <field name="new_certification_date" required ="state == 'passed'" readonly ="state in ['passed', 'failed', 'canceled']"/>
-                            <field name="new_expiry_date" readonly="1"/>
+                            <field name="new_next_test_date" readonly="1"/>
                         </group>
                     </group>
                     <notebook>
@@ -76,7 +76,7 @@
                 <field name="technician_id"/>
                 <field name="new_certification_number"/>
                 <field name="new_certification_date"/>
-                <field name="new_expiry_date"/>
+                <field name="new_next_test_date"/>
                 <field name="state"/>
             </tree>
         </field>

@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="custom_invoice_gpl">
+        <t t-call="web.basic_layout">
+            <t t-foreach="docs" t-as="o">
+   <style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 30px;
+        color: #333;
+    }
+    h2 {
+        text-align: center;
+        margin-bottom: 65px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+       tr  {
+       border: 5px solid #fff;
+       }
+    .facture {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        margin-bottom: 65px;
+        border: 1px solid #000;
+    }
+    .facture th, .facture td , .facture tr{
+        border: 1px solid #000;
+        padding: 8px;
+        text-align: left;
+    }
+    /* supprime border: none global */
+    .section h4 {
+        margin-top: 0;
+        border-bottom: 1px solid #000;
+        padding-bottom: 5px;
+    }
+    .total {
+        font-weight: bold;
+    }
+    .stamp {
+        margin-top: 30px;
+    }
+    .note {
+        font-size: 0.9em;
+        margin-top: 20px;
+    }
+    .gris {
+        background-color: #f0f0f0;
+        padding: 25px 50px;
+    }
+    .gris-small {
+        background-color: #f0f0f0;
+        padding: 10px 25px;
+    }
+</style>
+
+                <div class="page">
+
+
+                    <h2>FACTURE N° <span t-if="o.name != '/'" t-field="o.name"/> du <span class ="gris" t-field="o.invoice_date" /> </h2>
+
+    <div class="section">
+        <h4>Installateur :</h4>
+        <table>
+            <tr>
+                <td>Raison Sociale / Nom :</td>
+                <td class ="gris-small"><span t-out="o.company_id.name" /></td>
+                <td>N° RC :</td>
+                <td class ="gris-small">40/01-2422403A07</td>
+            </tr>
+            <tr>
+                <td>Adresse :</td>
+                <td class ="gris-small"><span t-out="o.company_id.partner_id.contact_address" /> </td>
+                <td>RIB :</td>
+                <td class ="gris-small">[............]</td>
+            </tr>
+            <tr>
+                <td>Tél :</td>
+                <td class ="gris-small"><span t-out="o.company_id.partner_id.mobile" /></td>
+                <td>NIF :</td>
+                <td class ="gris-small">[............]</td>
+            </tr>
+            <tr>
+                <td>Fax :</td>
+                <td class ="gris-small"><span t-out="o.company_id.partner_id.phone" /></td>
+                <td>NIS :</td>
+                <td class ="gris-small">[............]</td>
+            </tr>
+            <tr>
+                <td>E-mail :</td>
+                <td class ="gris-small"><span t-out="o.company_id.partner_id.email" /></td>
+                <td>ART :</td>
+                <td class ="gris-small">[............]</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h4>Bénéficiaire (Client) :</h4>
+        <table>
+            <tr>
+                <td>Nom / Prénom :</td>
+                <td class ="gris-small">ALLAM ABDELAALI</td>
+            </tr>
+            <tr>
+                <td>Adresse :</td>
+                <td class ="gris-small">CHECHAR, CHECHAR, KHENCHELA</td>
+            </tr>
+            <tr>
+                <td>Tél :</td>
+                <td class ="gris-small">0657850681</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <table class="facture">
+            <thead class="facture">
+                <tr>
+                    <th>Désignation</th>
+                    <th>Quantité</th>
+                    <th>Prix unitaire (DA HT)</th>
+                    <th>Total HT</th>
+                </tr>
+            </thead>
+            <tbody class="facture">
+                <tr>
+                    <td>Fourniture et installation Kitinjection sequentielle Torique 012506764</td>
+                    <td>1</td>
+                    <td>64 220.18</td>
+                    <td>64 220.18</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="total">Total HT</td>
+                    <td>64 220.18</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="total">TVA (9%)</td>
+                    <td>5 779.82</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="total">Total TTC</td>
+                    <td>70 000.00</td>
+                </tr>
+                <tr>
+                    <td colspan="3">(*) Avance de l'aide à la conversion au GPLc - PNME 2024</td>
+                    <td>-21 000.00</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="total">Total facture (DA)</td>
+                    <td><strong>49 000.00</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="note">
+        (*) Opération réalisée dans le cadre du <strong>Programme National de Maîtrise de l'Energie (PNME) 2024</strong>. Le propriétaire du véhicule converti au GPLc bénéficie d’une aide de l’État à la fourniture et installation d’un Kit GPLc.
+    </div>
+
+                </div>
+            </t>
+        </t>
+    </template>
+
+</odoo>

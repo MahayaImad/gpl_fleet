@@ -1,5 +1,6 @@
 from odoo import models, fields, api, _
 from datetime import datetime, timedelta
+from odoo.exceptions import UserError, ValidationError
 import logging
 
 from odoo.exceptions import UserError
@@ -39,30 +40,19 @@ class GplVehicle(models.Model):
     estimated_duration = fields.Float(
         string='Durée estimée (heures)',
         compute='_compute_estimated_duration',
+        inverse='_inverse_estimated_duration',
         store=True,
         help="Durée estimée du service en heures selon le type d'intervention"
     )
 
-    # RDV toute la journée
-    appointment_all_day = fields.Boolean(
-        string='Toute la journée',
-        default=False,
-        help="Cocher si le rendez-vous/service prend toute la journée"
-    )
-
-    # Technicien assigné pour ce RDV
-    assigned_technician_id = fields.Many2one(
+    assigned_technician_ids = fields.Many2many(
         'hr.employee',
-        string='Technicien assigné',
-        help="Technicien principal assigné à ce rendez-vous"
+        'gpl_rdv_technician_rel',  # Table de relation différente
+        'rdv_id',
+        'employee_id',
+        string='Techniciens assignés',
+        help="Techniciens assignés à ce rendez-vous"
     )
-
-    # Priorité du service
-    service_priority = fields.Selection([
-        ('low', 'Normale'),
-        ('medium', 'Importante'),
-        ('high', 'Urgente')
-    ], string='Priorité', default='low', tracking=True)
 
     # Couleur pour le calendrier (calculée automatiquement)
     color = fields.Integer(
@@ -70,12 +60,6 @@ class GplVehicle(models.Model):
         compute='_compute_calendar_color',
         store=True,
         help="Couleur pour l'affichage calendrier"
-    )
-
-    # Informations de contact
-    appointment_notes = fields.Text(
-        string='Notes du rendez-vous',
-        help="Notes spécifiques pour ce rendez-vous"
     )
 
     license_plate = fields.Char(
@@ -186,9 +170,9 @@ class GplVehicle(models.Model):
     # Champs reliés au réservoir via le lot
     reservoir_certification_number = fields.Char(related="reservoir_lot_id.certification_number",
                                                string="Numéro de certification", readonly=True)
-    reservoir_certification_date = fields.Date(related="reservoir_lot_id.certification_date",
-                                             string="Date de certification", readonly=True)
-    reservoir_expiry_date = fields.Date(related="reservoir_lot_id.expiry_date",
+    reservoir_last_test_date = fields.Date(related="reservoir_lot_id.last_test_date",
+                                             string="Date de dernière épreuve", readonly=True)
+    reservoir_next_test_date = fields.Date(related="reservoir_lot_id.next_test_date",
                                        string="Date d'expiration", readonly=True)
 
     installation_count = fields.Integer(
@@ -394,6 +378,7 @@ class GplVehicle(models.Model):
             'vehicle_id': self.id,
             'date_service': fields.Datetime.now(),
             'date_planned': self.appointment_date,
+            'technician_ids': self.assigned_technician_ids,
         }
 
         installation = self.env['gpl.service.installation'].create(installation_vals)
@@ -581,42 +566,27 @@ class GplVehicle(models.Model):
             'type': 'ir.actions.act_window',
         }
 
-    @api.depends('next_service_type', 'service_priority')
+    @api.depends('next_service_type')
     def _compute_estimated_duration(self):
         """Calcule la durée estimée selon le type de service"""
         duration_mapping = {
-            'installation': {
-                'low': 4.0,  # Installation normale: 4h
-                'medium': 5.0,  # Installation complexe: 5h
-                'high': 6.0  # Installation urgente/difficile: 6h
-            },
-            'repair': {
-                'low': 2.0,  # Réparation simple: 2h
-                'medium': 4.0,  # Réparation moyenne: 4h
-                'high': 6.0  # Réparation complexe: 6h
-            },
-            'inspection': {
-                'low': 1.0,  # Contrôle simple: 1h
-                'medium': 1.5,  # Contrôle approfondi: 1.5h
-                'high': 2.0  # Contrôle avec problèmes: 2h
-            },
-            'testing': {
-                'low': 3.0,  # Réépreuve normale: 3h
-                'medium': 4.0,  # Réépreuve avec réparation: 4h
-                'high': 5.0  # Réépreuve complexe: 5h
-            }
+            'installation': 4,
+            'repair': 3.0,
+            'inspection': 1.5,
+            'testing': 3.0
         }
 
         for record in self:
             service_type = record.next_service_type or 'repair'
-            priority = record.service_priority or 'low'
+            record.estimated_duration = duration_mapping.get(service_type, 2.0)
 
-            if service_type in duration_mapping:
-                record.estimated_duration = duration_mapping[service_type].get(priority, 2.0)
-            else:
-                record.estimated_duration = 2.0  # Durée par défaut
+    def _inverse_estimated_duration(self):
+        """Permet la modification manuelle du champ calculé"""
+        for record in self:
+            # La valeur saisie manuellement est automatiquement sauvegardée
+            pass
 
-    @api.depends('next_service_type', 'service_priority', 'appointment_date')
+    @api.depends('next_service_type', 'appointment_date')
     def _compute_calendar_color(self):
         """Calcule la couleur pour l'affichage calendrier"""
         from datetime import datetime, timedelta
@@ -634,12 +604,6 @@ class GplVehicle(models.Model):
             elif record.next_service_type == 'testing':
                 color = 3  # Jaune
 
-            # Modifier la couleur selon la priorité
-            if record.service_priority == 'high':
-                color = 1  # Rouge pour urgent
-            elif record.service_priority == 'medium' and color != 1:
-                color = 3  # Orange pour important
-
             # Couleur spéciale pour les RDV en retard
             if record.appointment_date:
                 appointment_date = fields.Datetime.from_string(record.appointment_date)
@@ -648,36 +612,6 @@ class GplVehicle(models.Model):
 
             record.color = color
 
-    # === MÉTHODES D'ACTION AMÉLIORÉES ===
-
-    def action_schedule_appointment(self):
-        """Action pour programmer un rendez-vous"""
-        self.ensure_one()
-
-        # Vérifier que les prérequis sont remplis
-        if not self.next_service_type:
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Type de service requis'),
-                    'message': _('Veuillez d\'abord définir le type de service à effectuer.'),
-                    'type': 'warning',
-                }
-            }
-
-        return {
-            'name': _('Programmer un rendez-vous'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'gpl.vehicle',
-            'res_id': self.id,
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_appointment_date': fields.Datetime.now(),
-                'focus_appointment': True
-            }
-        }
 
     def action_start_service(self):
         """Démarre le service selon le type prévu"""
@@ -725,7 +659,7 @@ class GplVehicle(models.Model):
                 'status_id': completed_status.id,
                 'appointment_date': False,
                 'next_service_type': False,
-                'assigned_technician_id': False
+                'assigned_technician_ids': False
             })
 
         return {
@@ -774,36 +708,42 @@ class GplVehicle(models.Model):
 
     # === CONTRAINTES ET VALIDATIONS ===
 
-    @api.constrains('appointment_date', 'assigned_technician_id')
+    @api.constrains('appointment_date', 'assigned_technician_ids')
     def _check_technician_availability(self):
-        """Vérifie que le technicien n'est pas déjà occupé à ce créneau"""
+        """Vérifie que les techniciens ne sont pas déjà occupés à ce créneau"""
         for record in self:
-            if record.appointment_date and record.assigned_technician_id:
-                # Chercher les conflits (même technicien, même créneau)
-                conflicting_appointments = self.search([
-                    ('id', '!=', record.id),
-                    ('assigned_technician_id', '=', record.assigned_technician_id.id),
-                    ('appointment_date', '!=', False)
-                ])
+            if record.appointment_date and record.assigned_technician_ids:
+                # Calculer les heures de début et fin du rendez-vous actuel
+                rec_start = fields.Datetime.from_string(record.appointment_date)
+                rec_end = rec_start + timedelta(hours=record.estimated_duration or 2)
 
-                for appointment in conflicting_appointments:
-                    if appointment.appointment_date and record.appointment_date:
-                        app_start = fields.Datetime.from_string(appointment.appointment_date)
-                        app_end = app_start + timedelta(hours=appointment.estimated_duration or 2)
+                # Vérifier la disponibilité de chaque technicien assigné
+                for technician in record.assigned_technician_ids:
+                    # Chercher les conflits pour ce technicien spécifique
+                    conflicting_appointments = self.search([
+                        ('id', '!=', record.id),
+                        ('assigned_technician_ids', 'in', technician.id),  # Many2many search
+                        ('appointment_date', '!=', False)
+                    ])
 
-                        rec_start = fields.Datetime.from_string(record.appointment_date)
-                        rec_end = rec_start + timedelta(hours=record.estimated_duration or 2)
+                    for appointment in conflicting_appointments:
+                        if appointment.appointment_date:
+                            # Calculer les heures de début et fin du rendez-vous conflictuel
+                            app_start = fields.Datetime.from_string(appointment.appointment_date)
+                            app_end = app_start + timedelta(hours=appointment.estimated_duration or 2)
 
-                        # Vérifier le chevauchement
-                        if not (rec_end <= app_start or rec_start >= app_end):
-                            raise ValidationError(_(
-                                "Le technicien %s est déjà occupé sur ce créneau.\n"
-                                "Conflit avec: %s (%s)"
-                            ) % (
-                                                      record.assigned_technician_id.name,
-                                                      appointment.name,
-                                                      appointment.appointment_date
-                                                  ))
+                            # Vérifier le chevauchement
+                            if not (rec_end <= app_start or rec_start >= app_end):
+                                raise ValidationError(_(
+                                    "Le technicien %s est déjà occupé sur ce créneau.\n"
+                                    "Conflit avec: %s (%s à %s)"
+                                ) % (
+                                                          technician.name,
+                                                          appointment.name,
+                                                          appointment.appointment_date.strftime(
+                                                              '%d/%m/%Y %H:%M') if appointment.appointment_date else '',
+                                                          app_end.strftime('%H:%M') if app_end else ''
+                                                      ))
 
     # === NOTIFICATIONS AUTOMATIQUES ===
 
@@ -816,19 +756,31 @@ class GplVehicle(models.Model):
         ])
 
         for appointment in appointments_tomorrow:
-            # Créer une activité de rappel
+            # Déterminer qui notifier (premier technicien avec user_id, ou utilisateur actuel)
+            user_to_notify = self.env.user
+            if appointment.assigned_technician_ids:
+                for tech in appointment.assigned_technician_ids:
+                    if tech.user_id:
+                        user_to_notify = tech.user_id
+                        break
+
+            # Liste des techniciens
+            technician_names = ', '.join(
+                appointment.assigned_technician_ids.mapped('name')) or 'Aucun technicien assigné'
+
             self.env['mail.activity'].create({
                 'activity_type_id': self.env.ref('mail.mail_activity_data_call').id,
                 'summary': f'Rappel RDV - {appointment.name}',
-                'note': f'''Rendez-vous prévu demain pour:
+                'note': f'''Rendez-vous prévu demain:
                 - Véhicule: {appointment.name}
                 - Client: {appointment.client_id.name}
                 - Service: {appointment.next_service_type}
                 - Heure: {appointment.appointment_date}
-                - Durée estimée: {appointment.estimated_duration}h''',
+                - Durée estimée: {appointment.estimated_duration}h
+                - Techniciens: {technician_names}''',
                 'res_model_id': self.env['ir.model']._get('gpl.vehicle').id,
                 'res_id': appointment.id,
-                'user_id': appointment.assigned_technician_id.user_id.id if appointment.assigned_technician_id.user_id else self.env.uid,
+                'user_id': user_to_notify.id,
                 'date_deadline': fields.Date.today(),
             })
 

@@ -127,6 +127,12 @@
                                    invisible ="installation_line_ids == False"
                                    options="{'currency_field': 'currency_id'}"/>
                         </group>
+                        <group string="Bordereau d'envoi"
+                               invisible="state != 'done'">
+                            <field name="sent_in_bordereau" readonly="1"/>
+                            <field name="bordereau_date" readonly="1"
+                                   invisible="sent_in_bordereau == False"/>
+                        </group>
                     </group>
 
                     <notebook>
@@ -233,6 +239,20 @@
                 <field name="reservoir_lot_id"/>
                 <field name="currency_id" invisible="1"/>
                 <field name="total_amount" sum="Total" widget="monetary"/>
+                <field name="sent_in_bordereau"
+                       string="📤 Envoyé"
+                       widget="boolean_button"
+                       decoration-success="sent_in_bordereau == True"
+                       decoration-warning="sent_in_bordereau == False"
+                       optional="show"/>
+                <field name="bordereau_date"
+                       string="Date envoi"
+                       optional="hide"
+                       readonly="1"/>
+                <field name="bordereau_reference"
+                       string="Réf. bordereau"
+                       optional="hide"
+                       readonly="1"/>
             </tree>
         </field>
     </record>
@@ -254,6 +274,13 @@
                 <filter string="En cours" name="in_progress" domain="[('state', '=', 'in_progress')]"/>
                 <filter string="Terminé" name="done" domain="[('state', '=', 'done')]"/>
                 <filter string="Annulé" name="cancel" domain="[('state', '=', 'cancel')]"/>
+                <separator/>
+                <filter string="Non envoyées" name="not_sent"
+                        domain="[('sent_in_bordereau', '=', False)]"/>
+                <filter string="Déjà envoyées" name="already_sent"
+                        domain="[('sent_in_bordereau', '=', True)]"/>
+                <filter string="Prêtes pour envoi" name="ready_for_sending"
+                        domain="[('state', '=', 'done'), ('sent_in_bordereau', '=', False)]"/>
                 <separator/>
                 <filter string="Ce mois" name="this_month" domain="[
                     ('date_service', '&gt;=', (context_today().replace(day=1)).strftime('%Y-%m-%d')),
@@ -435,6 +462,47 @@
                 <field name="price_subtotal" sum="Total"/>
                 <field name="available_lot_ids" invisible="1"/>
             </tree>
+        </field>
+    </record>
+    <record id="action_gpl_installations_ready_for_sending" model="ir.actions.act_window">
+        <field name="name">Installations prêtes pour envoi</field>
+        <field name="res_model">gpl.service.installation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '=', 'done'), ('sent_in_bordereau', '=', False)]</field>
+        <field name="context">{
+            'search_default_ready_for_sending': 1,
+            'default_sent_in_bordereau': False
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                ✅ Aucune installation prête pour envoi
+            </p>
+            <p>
+                Cette vue affiche les installations GPL terminées qui n'ont pas encore été incluses dans un bordereau d'envoi vers les autorités.
+            </p>
+            <p>
+                Sélectionnez plusieurs installations et utilisez le menu "Action" > "Générer Bordereau d'Envoi" pour créer un bordereau groupé.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action pour l'historique des bordereaux -->
+    <record id="action_gpl_bordereau_history" model="ir.actions.act_window">
+        <field name="name">📋 Historique des bordereaux</field>
+        <field name="res_model">gpl.service.installation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('sent_in_bordereau', '=', True)]</field>
+        <field name="context">{
+            'search_default_group_bordereau_reference': 1,
+            'create': False
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucun bordereau généré
+            </p>
+            <p>
+                Cette vue affiche l'historique de toutes les installations incluses dans des bordereaux d'envoi.
+            </p>
         </field>
     </record>
 

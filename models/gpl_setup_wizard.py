@@ -23,7 +23,7 @@ class GplSetupWizard(models.TransientModel):
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
     has_gpl_license = fields.Boolean(string='Possède une licence d\'installation GPL')
     license_number = fields.Char(string='Numéro de licence')
-    certification_authority = fields.Char(string='Organisme certificateur')
+    certification_authority = fields.Char(string='Organisme certificateur',placeholder="MINISTÈRE DE L'ÉNERGIE , DES MINES ET DES ENERGIES RENOUVELABLES")
 
     # === TECHNICIENS ===
     create_technicians = fields.Boolean(string='Créer des techniciens', default=True)
@@ -39,9 +39,9 @@ class GplSetupWizard(models.TransientModel):
     reservoir_types = fields.Text(
         string='Types de réservoirs',
         default="""Réservoir GPL 40L Cylindrique
-Réservoir GPL 60L Cylindrique
-Réservoir GPL 80L Toroïdal
-Réservoir GPL 100L Cylindrique""",
+                    Réservoir GPL 60L Cylindrique
+                    Réservoir GPL 80L Toroïdal
+                    Réservoir GPL 100L Cylindrique""",
         help="Un type par ligne au format: Nom Capacité Forme"
     )
 

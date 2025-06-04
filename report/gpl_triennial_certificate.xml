@@ -16,7 +16,7 @@
                             font-family: 'Roboto', sans-serif;
                         }
                         .field-box {
-                            border: 1px dotted #ccc;
+                            border: 2px dotted #ccc;
                             padding: 6px 10px;
                             margin-bottom: 15px;
                             min-height: 30px;
@@ -24,6 +24,13 @@
                         .field-label {
                             font-weight: bold;
                             color: #333;
+                            margin-bottom: 5px;
+                            text-align: center;
+                            font-size: 18px;
+                        }
+                        .blank-label {
+                            font-weight: bold;
+                            color: #FFF;
                             margin-bottom: 5px;
                             text-align: center;
                             font-size: 18px;
@@ -51,6 +58,10 @@
                             border-top: 1px solid #ddd;
                             margin: 15px 0;
                             margin-bottom : 35px;
+                        }
+                        .section-espace {
+                            margin: 15px 0;
+                            margin-bottom : 25px;
                         }
                         .installation-notes {
                             background-color: #f5f5f5;
@@ -172,7 +183,7 @@
                         </div>
                     </div>-->
 
-                    <div class="section-separator"></div>
+                    <div class="section-separator" />
 
                     <!-- Informations du véhicule -->
                     <div class="row">
@@ -225,7 +236,7 @@
                         <div class="col-2"/>
                     </div>
 
-                    <div class="section-separator"></div>
+                    <div class="section-separator"/>
 
                     <!-- Informations d'autorisation -->
 
@@ -236,7 +247,12 @@
                                 <div class="legend-title">Autorisation N° :</div>
                                 <div class="row">
                                     <div class="col-12">
-                                        <div class="field-label" t-field="o.certification_number" />
+                                        <t t-if="o.certification_number">
+                                            <div class="field-label" t-field="o.certification_number" />
+                                        </t>
+                                        <t t-else="">
+                                            <div class="blank-label" > .... </div>
+                                        </t>
                                     </div>
                                 </div>
                             </div>
@@ -246,7 +262,7 @@
                                 <div class="legend-title">Delivrée Par :</div>
                                 <div class="row">
                                     <div class="col-12">
-                                        <div class="field-label" t-field="o.technician_ids.name" />
+                                        <div class="field-label" t-field="o.company_id.name" />
                                     </div>
                                 </div>
                             </div>
@@ -254,7 +270,7 @@
                         <div class="col-2"/>
                     </div>
 
-                    <div class="section-separator"></div>
+                    <div class="section-separator" />
 
                     <!-- Informations du réservoir -->
                    <div class="row">
@@ -283,12 +299,16 @@
                                 <div class="legend-title">Volume :</div>
                                 <div class="row">
                                     <div class="col-12">
-                                        <div class="field-label" t-field="o.reservoir_lot_id.product_id.capacity" />
+                                        <div class="field-label">
+                                            <span t-field="o.reservoir_lot_id.product_id.capacity" /> Lt
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="section-espace" />
 
                     <div class="row">
                         <div class="col-4">
@@ -297,8 +317,8 @@
                                 <div class="row">
                                     <div class="col-12">
                                         <div class="field-label">
-                                            <t t-if="o.reservoir_lot_id.certification_date">
-                                                <span t-field="o.reservoir_lot_id.certification_date" t-options="{'format': 'MM/yyyy'}"/>
+                                            <t t-if="o.reservoir_lot_id.last_test_date">
+                                                <span t-field="o.reservoir_lot_id.last_test_date" t-options="{'format': 'MM/yyyy'}"/>
                                             </t>
                                         </div>
                                     </div>
@@ -310,9 +330,9 @@
                                 <div class="legend-title">A Reeprouver Avant :</div>
                                 <div class="row">
                                     <div class="col-12">
-                                        <div class="field-box">
-                                            <t t-if="o.reservoir_lot_id.expiry_date">
-                                                <span t-field="o.reservoir_lot_id.expiry_date" t-options="{'format': 'MM/yyyy'}"/>
+                                        <div class="field-box field-label">
+                                            <t t-if="o.reservoir_lot_id.next_test_date">
+                                                <span t-field="o.reservoir_lot_id.next_test_date" t-options="{'format': 'MM/yyyy'}"/>
                                             </t>
                                         </div>
                                     </div>
@@ -321,7 +341,7 @@
                         </div>
                     </div>
 
-                    <div class="section-separator"></div>
+                    <div class="section-separator" />
 
                     <!-- Constatations et résultats des tests -->
                     <div class="row">
@@ -337,36 +357,46 @@
                         </div>
                     </div>
 
+                    <div class="section-espace" />
+
                     <!-- Date du prochain contrôle -->
                     <div class="row">
-                        <div class="col-6">
-                            <div class="field-label">Prochain Contrôle Technique :</div>
-                            <div class="field-box">
-                                <t t-if="o.date_service">
-                                    <span t-esc="(o.date_service + relativedelta(years=1)).strftime('%d/%m/%Y')"/>
-                                </t>
-                            </div>
+                        <div class="col-6 text-left">
+                            <h4>Prochain Contrôle Technique :</h4>
                         </div>
-                        <div class="col-6">
-                            <div style="text-align: right; margin-top: 20px;">
-                                <div><span t-field="o.company_id.city"/>e : <span t-field="o.date_service" t-options="{'format': 'dd/MM/yyyy'}"/></div>
-                                <div style="margin-top: 10px;">Centre <span t-field="o.company_id.city"/></div>
-                            </div>
+                        <div class="col-6 text-left">
+                            <t t-if="o.date_service">
+                                    <h4 t-esc="(o.date_service + relativedelta(months=30)).strftime('%d/%m/%Y')"/>
+                            </t>
+                        </div>
+                    </div>
+
+                    <div class="section-espace" />
+
+
+                    <div class="row" style="margin-top: 50px;">
+                        <div class="col-6" />
+
+                        <div class="col-6 text-center">
+                            <p>
+                                <span t-field="o.company_id.city"/> Le :
+                                <span t-field="o.date_completion" t-options="{'format': 'dd/MM/yyyy'}"/>
+                            </p>
                         </div>
                     </div>
 
                     <!-- Signature et cachet -->
                     <div class="row mt-5">
                         <div class="col-6 text-center">
-                            <p><strong>L'installateur</strong></p>
-                            <div style="border-bottom: 1px solid #999; height: 60px;"></div>
-                            <span t-if="o.technician_ids">
-                                <span t-field="o.technician_ids.name"/>
+                            <p class ="blank-label">...</p>
+                            <div style="border-bottom: 1px solid #999; height: 60px;" />
+                            <span t-if="o.company_id">
+                                <span t-field="o.company_id.name"/>
                             </span>
                         </div>
                         <div class="col-6 text-center">
                             <p><strong>Cachet</strong></p>
-                            <div style="border: 1px dashed #999; height: 80px; width: 150px; margin: 0 auto;"></div>
+                            <div style="border: 1px dashed #999; height: 80px; width: 150px; margin: 0 auto;" />
                         </div>
                     </div>
                 </div>

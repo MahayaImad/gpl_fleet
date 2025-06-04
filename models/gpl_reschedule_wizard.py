@@ -10,12 +10,7 @@ class GplVehicleRescheduleWizard(models.TransientModel):
     vehicle_id = fields.Many2one('gpl.vehicle', string='Véhicule', required=True)
     current_date = fields.Datetime(string='Rendez-vous actuel', readonly=True)
     new_date = fields.Datetime(string='Nouveau rendez-vous', required=True)
-    new_technician_id = fields.Many2one('hr.employee', string='Nouveau technicien')
-    new_priority = fields.Selection([
-        ('low', 'Normale'),
-        ('medium', 'Importante'),
-        ('high', 'Urgente')
-    ], string='Nouvelle priorité')
+    new_technician_ids = fields.Many2many('hr.employee', string='Nouveaux techniciens')
     reason = fields.Text(string='Raison du changement')
     notify_client = fields.Boolean(string='Notifier le client', default=True)
 
@@ -32,8 +27,7 @@ class GplVehicleRescheduleWizard(models.TransientModel):
             vehicle = self.env['gpl.vehicle'].browse(vehicle_id)
             res.update({
                 'current_date': vehicle.appointment_date,
-                'new_technician_id': vehicle.assigned_technician_id.id,
-                'new_priority': vehicle.service_priority,
+                'new_technician_ids': [(6, 0, vehicle.assigned_technician_ids.ids)],
             })
         return res
 
@@ -53,11 +47,8 @@ class GplVehicleRescheduleWizard(models.TransientModel):
             'appointment_date': self.new_date,
         }
 
-        if self.new_technician_id:
-            values['assigned_technician_id'] = self.new_technician_id.id
-
-        if self.new_priority:
-            values['service_priority'] = self.new_priority
+        if self.new_technician_ids:
+            values['assigned_technician_ids'] = [(6, 0, self.new_technician_ids.ids)]
 
         self.vehicle_id.write(values)
 
@@ -66,8 +57,9 @@ class GplVehicleRescheduleWizard(models.TransientModel):
         • Ancienne date: {self.current_date}
         • Nouvelle date: {self.new_date}"""
 
-        if self.new_technician_id:
-            message += f"\n• Nouveau technicien: {self.new_technician_id.name}"
+        if self.new_technician_ids:
+            technician_names = ', '.join(self.new_technician_ids.mapped('name'))
+            message += f"\n• Nouveaux techniciens: {technician_names}"
 
         if self.reason:
             message += f"\n• Raison: {self.reason}"
@@ -126,14 +118,8 @@ class GplQuickAppointmentWizard(models.TransientModel):
         ('inspection', 'Contrôle Technique/Validation'),
         ('testing', 'Réépreuve Réservoir'),
     ], string='Type de service', required=True)
-    technician_id = fields.Many2one('hr.employee', string='Technicien assigné')
-    priority = fields.Selection([
-        ('low', 'Normale'),
-        ('medium', 'Importante'),
-        ('high', 'Urgente')
-    ], string='Priorité', default='low')
-    all_day = fields.Boolean(string='Toute la journée')
-    notes = fields.Text(string='Notes')
+    technician_ids = fields.Many2many('hr.employee', string='Techniciens assignés')
+
 
     def action_create_appointment(self):
         """Crée le rendez-vous"""
@@ -142,13 +128,10 @@ class GplQuickAppointmentWizard(models.TransientModel):
         values = {
             'appointment_date': self.appointment_date,
             'next_service_type': self.service_type,
-            'service_priority': self.priority,
-            'appointment_all_day': self.all_day,
-            'appointment_notes': self.notes,
         }
 
-        if self.technician_id:
-            values['assigned_technician_id'] = self.technician_id.id
+        if self.technician_ids:
+            values['assigned_technician_ids'] = [(6, 0, self.technician_ids.ids)]
 
         # Mettre à jour le statut
         planned_status = self.env.ref('gpl_fleet.vehicle_status_planifie', raise_if_not_found=False)
@@ -160,11 +143,11 @@ class GplQuickAppointmentWizard(models.TransientModel):
         # Message de confirmation
         message = f"""Nouveau rendez-vous programmé:
         • Date: {self.appointment_date}
-        • Service: {dict(self._fields['service_type'].selection)[self.service_type]}
-        • Priorité: {dict(self._fields['priority'].selection)[self.priority]}"""
+        • Service: {dict(self._fields['service_type'].selection)[self.service_type]}"""
 
-        if self.technician_id:
-            message += f"\n• Technicien: {self.technician_id.name}"
+        if self.technician_ids:
+            technician_names = ', '.join(self.technician_ids.mapped('name'))
+            message += f"\n• Techniciens: {technician_names}"
 
         if self.notes:
             message += f"\n• Notes: {self.notes}"

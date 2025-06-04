@@ -42,4 +42,43 @@
         <field name="paperformat_id" ref="gpl_fleet.paperformat_gpl_certificate_montage" />
     </record>
 
+    <!-- Report template definition -->
+        <record id="action_report_gpl_authorization" model="ir.actions.report">
+            <field name="name">Autorisation d'utilisation du GPL</field>
+            <field name="model">gpl.service.installation</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">gpl_fleet.report_gpl_authorization_template</field>
+            <field name="report_file">gpl_fleet.report_gpl_authorization_template</field>
+            <field name="print_report_name">'Autorisation d'utilisation du GPL - %s' % (object.name)</field>
+            <field name="binding_model_id" ref="model_gpl_service_installation"/>
+            <field name="binding_type">report</field>
+            <field name="paperformat_id" ref="gpl_fleet.paperformat_gpl_certificate_montage"/>
+        </record>
+
+
+    <!-- Action de rapport -->
+    <record id="action_report_gpl_bordereau_envoi" model="ir.actions.report">
+        <field name="name">Bordereau d'Envoi GPL</field>
+        <field name="model">gpl.service.installation</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">gpl_fleet.report_gpl_bordereau_envoi</field>
+        <field name="report_file">gpl_fleet.report_gpl_bordereau_envoi</field>
+        <field name="print_report_name">'Bordereau_Envoi_GPL_%s' % (datetime.datetime.now().strftime('%Y%m%d_%H%M'))</field>
+        <field name="paperformat_id" ref="gpl_fleet.paperformat_gpl_certificate_montage"/>
+        <field name="binding_model_id" ref="model_gpl_service_installation"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_custom_invoice_gpl" model="ir.actions.report">
+        <field name="name">Facture Type</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">gpl_fleet.custom_invoice_gpl</field>
+        <field name="report_file">gpl_fleet.custom_invoice_gpl</field>
+        <field name="print_report_name">'Facture - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="gpl_fleet.paperformat_gpl_certificate_montage"/>
+    </record>
+
 </odoo>

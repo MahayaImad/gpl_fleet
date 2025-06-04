@@ -18,8 +18,6 @@ class StockLotGplReservoir(models.Model):
     last_test_date = fields.Date(string="Date de dernière épreuve", tracking=True)
     next_test_date = fields.Date(string="Date de prochaine réépreuve", compute='_compute_next_test_date',
                                  store=True, tracking=True)
-    expiry_date = fields.Date(string="Date d'expiration", compute='_compute_expiry_date',
-                              store=True, tracking=True)
 
     # État du réservoir
     state = fields.Selection([
@@ -85,15 +83,6 @@ class StockLotGplReservoir(models.Model):
                     record.next_test_date = False
             else:
                 record.next_test_date = False
-
-    @api.depends('certification_date', 'is_gpl_reservoir')
-    def _compute_expiry_date(self):
-        """Calcule la date d'expiration pour compatibilité (basée sur certification)"""
-        for record in self:
-            if record.certification_date and record.is_gpl_reservoir:
-                record.expiry_date = record.certification_date + relativedelta(years=5)
-            else:
-                record.expiry_date = False
 
     @api.depends('next_test_date', 'manufacturing_date', 'is_gpl_reservoir')
     def _compute_state(self):

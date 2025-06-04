@@ -23,7 +23,7 @@ class GplReservoirTesting(models.Model):
 
     new_certification_number = fields.Char(string="Nouveau numéro certification")
     new_certification_date = fields.Date(string="Nouvelle date certification", default=fields.Date.today)
-    new_expiry_date = fields.Date(string="Nouvelle date d'expiration", compute='_compute_new_expiry_date', store=True)
+    new_next_test_date = fields.Date(string="Date de prochaine Réepreuve", compute='_compute_new_next_test_date', store=True)
 
     state = fields.Selection([
         ('draft', 'Brouillon'),
@@ -51,12 +51,12 @@ class GplReservoirTesting(models.Model):
             record.can_fail = record.state == 'in_progress'
             record.can_cancel = record.state in ('draft', 'scheduled', 'in_progress')
     @api.depends('new_certification_date')
-    def _compute_new_expiry_date(self):
+    def _compute_new_next_test_date(self):
         for record in self:
             if record.new_certification_date:
-                record.new_expiry_date = record.new_certification_date + relativedelta(years=5)
+                record.new_next_test_date = record.new_certification_date + relativedelta(years=5)
             else:
-                record.new_expiry_date = False
+                record.new_next_test_date = False
 
     @api.model_create_multi
     def create(self, vals_list):

@@ -53,7 +53,7 @@
                             </group>
                             <group string="Certification GPL" invisible="has_gpl_license == False">
                                 <field name="license_number" required="has_gpl_license == True"/>
-                                <field name="certification_authority" placeholder="ex: BUREAU VERITAS"/>
+                                <field name="certification_authority" placeholder="ex: MINISTÈRE DE L'ÉNERGIE, DES MINES ET DES ENERGIES RENOUVELABLES"/>
                             </group>
                         </group>
 

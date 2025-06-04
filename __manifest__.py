@@ -125,10 +125,14 @@
         'views/gpl_existing_installation_wizard_views.xml',
         'views/gpl_setup_wizard_views.xml',
 
+
         # === RAPPORTS ===
         'report/gpl_reports.xml',
         'report/gpl_certificates.xml',
         'report/gpl_triennial_certificate.xml',
+        'report/vehicle_gpl_authorization_reports.xml',
+        'report/gpl_bordereau_envoi.xml',
+        'report/gpl_custom_invoice.xml',
 
         # === MENUS ET NAVIGATION ===
         'views/gpl_menus.xml',
@@ -143,7 +147,6 @@
             'gpl_fleet/static/src/js/gpl_dashboard.js',
         ],
     },
-
 
     # Installation et configuration
     'installable': True,

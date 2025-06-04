@@ -46,14 +46,22 @@ class GplExistingInstallationWizard(models.TransientModel):
     )
     reservoir_serial_number = fields.Char(string='Numéro de série du réservoir')
     reservoir_certification_number = fields.Char(string='Numéro de certification')
-    reservoir_certification_date = fields.Date(string='Date de certification/épreuve')
+    reservoir_manufacturing_date = fields.Date(string='Date de fabrication')
+    reservoir_last_test_date = fields.Date(string="Date de dernière épreuve")
     reservoir_capacity = fields.Float(string='Capacité (litres)', related='reservoir_product_id.capacity',
                                       readonly=True)
     reservoir_fabricant = fields.Many2one(string='Fabricant', related='reservoir_product_id.fabricant_id',
                                           readonly=True)
 
     # Date calculée
-    reservoir_expiry_date = fields.Date(string="Date d'expiration calculée", compute='_compute_expiry_date')
+    reservoir_next_test_date = fields.Date(string="Date d'expiration calculée", compute='_compute_next_test_date')
+    reservoir_age_years = fields.Float(string="Âge (années)", compute='_compute_age_info', store=True)
+    reservoir_remaining_life_years = fields.Float(string="Durée de vie restante (années)",
+                                        compute='_compute_age_info', store=True)
+    reservoir_remaining_life_years_pourcentage = fields.Float(string="Durée de vie",
+                                                    compute='_compute_age_info', store=True)
+    reservoir_days_until_next_test = fields.Integer(string="Jours jusqu'à la prochaine réépreuve",
+                                          compute='_compute_next_test_date_days', store=True)
 
     # === INFORMATIONS INSTALLATION ===
     installation_date = fields.Date(string="Date d'installation", default=fields.Date.today)
@@ -69,19 +77,46 @@ class GplExistingInstallationWizard(models.TransientModel):
     created_reservoir_id = fields.Many2one('stock.lot', string='Réservoir créé', readonly=True)
     created_installation_id = fields.Many2one('gpl.service.installation', string='Installation créée', readonly=True)
 
-    @api.depends('reservoir_certification_date')
-    def _compute_expiry_date(self):
+    @api.depends('reservoir_last_test_date')
+    def _compute_next_test_date(self):
         """Calcule la date d'expiration du réservoir"""
         for wizard in self:
-            if wizard.reservoir_certification_date:
+            if wizard.reservoir_last_test_date:
                 # Récupérer la durée de validité depuis les paramètres (par défaut 5 ans)
                 validity_years = int(self.env['ir.config_parameter'].sudo().get_param(
                     'gpl_fleet.reservoir_validity_years', '5'
                 ))
-                wizard.reservoir_expiry_date = wizard.reservoir_certification_date + relativedelta(years=validity_years)
+                wizard.reservoir_next_test_date = wizard.reservoir_last_test_date + relativedelta(years=validity_years)
             else:
-                wizard.reservoir_expiry_date = False
+                wizard.reservoir_next_test_date = False
 
+    @api.depends('reservoir_last_test_date')
+    def _compute_next_test_date_days(self):
+        """Calcule la date d'expiration du réservoir"""
+        today = fields.Date.today()
+        for wizard in self:
+            if wizard.reservoir_last_test_date:
+                # Récupérer la durée de validité depuis les paramètres (par défaut 5 ans)
+                validity_years = int(self.env['ir.config_parameter'].sudo().get_param(
+                    'gpl_fleet.reservoir_validity_years', '5'
+                ))
+                wizard.reservoir_days_until_next_test = (wizard.reservoir_next_test_date - today).days
+            else:
+                wizard.reservoir_days_until_next_test = False
+    @api.depends('reservoir_manufacturing_date')
+    def _compute_age_info(self):
+        """Calcule l'âge et la durée de vie restante"""
+        today = fields.Date.today()
+        for record in self:
+            if record.reservoir_manufacturing_date and record.is_gpl_reservoir:
+                years_diff = (today - record.reservoir_manufacturing_date).days / 365.25
+                record.reservoir_age_years = years_diff
+                record.reservoir_remaining_life_years = max(0, 15 - years_diff)
+                record.reservoir_remaining_life_years_pourcentage = (record.reservoir_remaining_life_years / 15) * 100
+            else:
+                record.reservoir_age_years = 0
+                record.reservoir_remaining_life_years = 0
+                record.reservoir_remaining_life_years_pourcentage = 0
     @api.onchange('client_id')
     def _onchange_client_id(self):
         """Pré-remplit les informations si client existant sélectionné"""
@@ -273,7 +308,7 @@ class GplExistingInstallationWizard(models.TransientModel):
             'name': self.reservoir_serial_number,
             'product_id': self.reservoir_product_id.id,
             'certification_number': self.reservoir_certification_number,
-            'certification_date': self.reservoir_certification_date,
+            'manufacturing_date': self.reservoir_manufacturing_date,
             'company_id': self.env.company.id,
         }
         return self.env['stock.lot'].create(reservoir_vals)

@@ -144,8 +144,14 @@
                             </group>
                             <group string="Certification">
                                 <field name="reservoir_certification_number" placeholder="N° de certification"/>
-                                <field name="reservoir_certification_date"/>
-                                <field name="reservoir_expiry_date" readonly="1"/>
+                                <field name="reservoir_manufacturing_date"/>
+                                <field name="reservoir_last_test_date"/>
+                                <field name="reservoir_next_test_date" readonly="1"/>
+                                <field name="reservoir_days_until_next_test" readonly="1" widget="badge"
+                                       decoration-danger="reservoir_days_until_next_test &lt;= 0"
+                                       decoration-warning="reservoir_days_until_next_test &gt; 0 and reservoir_days_until_next_test &lt;= 180"
+                                       decoration-success="reservoir_days_until_next_test &gt; 180"/>
+
                             </group>
                         </group>
 
@@ -203,11 +209,11 @@
                                 <div><field name="reservoir_product_id" readonly="1" nolabel="1"/></div>
                                 <label for="reservoir_serial_number" string="N° Série"/>
                                 <div><field name="reservoir_serial_number" readonly="1" nolabel="1"/></div>
-                                <label for="reservoir_certification_date" string="Date certification" invisible="reservoir_certification_date == False"/>
-                                <div invisible="reservoir_certification_date == False"><field name="reservoir_certification_date" readonly="1" nolabel="1"/></div>
-                                <label for="reservoir_expiry_date" string="Date expiration" invisible="reservoir_expiry_date == False"/>
-                                <div invisible="reservoir_expiry_date == False">
-                                    <field name="reservoir_expiry_date" readonly="1" nolabel="1"/>
+                                <label for="reservoir_manufacturing_date" string="Date certification" invisible="reservoir_manufacturing_date == False"/>
+                                <div invisible="reservoir_manufacturing_date == False"><field name="reservoir_manufacturing_date" readonly="1" nolabel="1"/></div>
+                                <label for="reservoir_next_test_date" string="Date de prochaine réepreuve" invisible="reservoir_next_test_date == False"/>
+                                <div invisible="reservoir_next_test_date == False">
+                                    <field name="reservoir_next_test_date" readonly="1" nolabel="1"/>
                                 </div>
                             </group>
                             <group string="Installation">

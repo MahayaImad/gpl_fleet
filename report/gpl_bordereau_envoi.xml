@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Template du rapport Bordereau d'Envoi -->
+   <template id="report_gpl_bordereau_envoi">
+    <t t-call="web.basic_layout">
+        <div class="page">
+            <style>
+                .bordereau-header {
+                    text-align: center;
+                    margin: 30px;
+                    padding: 30px;
+                }
+                .company-info {
+                    text-align: left;
+                    padding-bottom: 5px;
+                }
+                .company-info-box {
+                    border-bottom: 2px solid #333;
+                }
+                .bordereau-title {
+                    font-size: 24px;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    margin: 15px 0;
+                }
+                .info-section {
+                    margin-bottom: 20px;
+                }
+                .info-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                }
+                .info-table th, .info-table td {
+                    border: 1px solid #333;
+                    padding: 8px;
+                    text-align: left;
+                }
+                .info-table th {
+                    background-color: #f0f0f0;
+                    font-weight: bold;
+                }
+                .total-section {
+                    text-align: center;
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin-top: 30px;
+                    border: 2px solid #333;
+                    padding: 15px;
+                }
+                .certificate-header {
+                    text-align: center;
+                    margin-bottom: 5px;
+                    padding-bottom: 10px;
+                }
+                .certificate-title {
+                    font-size: 36px;
+                    font-weight: bold;
+                    color: #333;
+                    margin-top: 10px;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }
+
+                /* Style pour le sous-titre */
+                .certificate-subtitle {
+                    color: #555;
+                    font-size: 20px;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    margin-top: 5px;
+                }
+                .text-details {
+                    color: #000;
+                    font-size: 13px;
+                    text-align: left;
+                }
+
+            </style>
+
+            <!-- En-tête du certificat -->
+            <div class="certificate-header row">
+                <div class="col-3 text-left">
+                    <img t-if="docs[0].company_id.logo" t-att-src="image_data_uri(docs[0].company_id.logo)" style="max-height: 130px;" alt="Logo"/>
+                </div>
+                <div class="col-9 text-center" style="padding-top: 20px;">
+                    <h1 class="certificate-title" t-field="docs[0].company_id.name"/>
+                    <p class="certificate-subtitle">INSTALLATION ET RÉPARATION DE KIT GPL</p>
+                </div>
+            </div>
+
+            <div class="row company-info-box">
+                <div class="col-3" />
+                <div class="col-6 company-info">
+
+                    <span class="text-details">Adresse: </span>
+                    <span class="text-details" t-field="docs[0].company_id.street"/>
+                    <t t-if="docs[0].company_id.street2">
+                        <span class="text-details" t-field="docs[0].company_id.street2"/>
+                    </t>
+
+                    <p>
+                        <span class="text-details">E-mail: </span><span class="text-details" t-field="docs[0].company_id.email"/>
+                    </p>
+                </div>
+                <div class="col-3 company-info">
+                    <span class="text-details">Tél: </span><span class="text-details" t-field="docs[0].company_id.phone"/>
+                    <p>
+                        <span class="text-details"> Fax:  </span>
+                    <t t-if="docs[0].company_id.mobile">
+                        <span class="text-details" t-field="docs[0].company_id.mobile"/>
+                    </t>
+                    </p>
+                </div>
+            </div>
+            <!-- En-tête du bordereau -->
+            <div class="bordereau-header">
+                <h1 class="bordereau-title">Bordereau d'Envoi de Pièces</h1>
+            </div>
+
+            <!-- Informations générales -->
+            <div class="info-section">
+                <table style="width: 100%; margin-bottom: 20px;">
+                    <tr>
+                        <td style="width: 60%;">
+                            <strong>Destinataire :</strong> Direction de l'Industrie KHENCHELA
+                        </td>
+                        <td style="width: 40%; text-align: right;">
+                            <strong>Date :</strong> <span t-esc="datetime.datetime.now().strftime('%d/%m/%Y')"/>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Tableau des installations -->
+            <table class="info-table">
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Nom &amp; Prénom</th>
+                        <th>Immatriculation</th>
+                        <th>N° Réservoir</th>
+                        <th>Type Contrôle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-set="counter" t-value="1"/>
+                    <tr t-foreach="docs" t-as="installation">
+                        <td t-esc="counter"/>
+                        <td t-esc="installation.vehicle_id.client_id.name"/>
+                        <td t-esc="installation.vehicle_id.license_plate"/>
+                        <td>
+                            <span t-if="installation.reservoir_lot_id" t-field="installation.reservoir_lot_id.name"/>
+                        </td>
+                        <td>
+                            <!-- Type de contrôle selon l'état de l'installation -->
+                            <span t-if="installation.state == 'done'">Installation</span>
+                            <span t-else="">En cours</span>
+                        </td>
+                        <t t-set="counter" t-value="counter + 1"/>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Total des dossiers -->
+            <div class="total-section">
+                TOTAL DOSSIERS : <span t-esc="len(docs)"/>
+            </div>
+
+            <!-- Note de bas de page avec référence -->
+            <div style="margin-top: 50px; text-align: center; font-size: 12px; color: #666;">
+                <p>Ce bordereau accompagne les dossiers d'installation GPL transmis pour validation officielle.</p>
+                <p>
+                    <strong>Référence bordereau :</strong>
+                    <span t-if="docs and docs[0].bordereau_reference" t-field="docs[0].bordereau_reference"/>
+                    <span t-else="" t-esc="'BOR-' + datetime.datetime.now().strftime('%Y%m%d-%H%M')"/>
+                </p>
+                <p>Bordereau généré le <span t-esc="datetime.datetime.now().strftime('%d/%m/%Y à %H:%M')"/></p>
+            </div>
+        </div>
+    </t>
+</template>
+
+
+</odoo>

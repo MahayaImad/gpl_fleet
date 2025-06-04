@@ -16,7 +16,7 @@
                         <field name="vehicle_id" readonly="1"/>
                         <field name="client_id" readonly="1"/>
                         <field name="service_type" readonly="1"/>
-                        <field name="estimated_duration" readonly="1"/>
+                        <field name="estimated_duration"/>
                     </group>
                     <group string="Rendez-vous actuel">
                         <field name="current_date" readonly="1"/>
@@ -26,8 +26,8 @@
                 <group>
                     <group string="Nouveau rendez-vous">
                         <field name="new_date" required="1"/>
-                        <field name="new_technician_id" options="{'no_create': True}"/>
-                        <field name="new_priority"/>
+                        <field name="new_technician_ids" widget="many2many_tags" placeholder="Ajouter des techniciens..."
+                                           options="{'color_field': 'color', 'no_create': True}" />
                     </group>
                     <group string="Notification">
                         <field name="notify_client"/>
@@ -56,7 +56,7 @@
 
                 <group>
                     <group string="Véhicule">
-                        <field name="vehicle_id" readonly="1"/>
+                        <field name="vehicle_id"/>
                     </group>
                 </group>
 
@@ -64,12 +64,10 @@
                     <group string="Détails du rendez-vous">
                         <field name="appointment_date" required="1"/>
                         <field name="service_type" required="1"/>
-                        <field name="priority"/>
-                        <field name="all_day"/>
                     </group>
                     <group string="Assignation">
-                        <field name="technician_id" options="{'no_create': True}"/>
-                        <field name="notes" placeholder="Notes spécifiques pour ce rendez-vous..."/>
+                        <field name="technician_ids" widget="many2many_tags" placeholder="Ajouter des techniciens..."
+                                           options="{'color_field': 'color', 'no_create': True}"/>
                     </group>
                 </group>
 
@@ -122,11 +120,13 @@
             <td style="padding: 10px;"><strong>Nouveau rendez-vous</strong></td>
             <td style="padding: 10px;">${object.appointment_date}</td>
         </tr>
-        % if object.assigned_technician_id:
-        <tr>
-            <td style="padding: 10px;"><strong>Technicien assigné</strong></td>
-            <td style="padding: 10px;">${object.assigned_technician_id.name}</td>
-        </tr>
+        % if object.assigned_technician_ids:
+            % for technician in object.assigned_technician_ids:
+            <tr>
+                <td style="padding: 10px;"><strong>Technicien assigné</strong></td>
+                <td style="padding: 10px;">${technician.name}</td>
+            </tr>
+            % endfor
         % endif
         % if object.estimated_duration:
         <tr style="background-color: #f0f0f0;">
@@ -135,13 +135,6 @@
         </tr>
         % endif
     </table>
-
-    % if object.appointment_notes:
-    <p><strong>Notes :</strong></p>
-    <p style="border-left: 3px solid #007bff; padding-left: 15px; color: #555;">
-        ${object.appointment_notes}
-    </p>
-    % endif
 
     <p>En cas de questions ou si vous souhaitez modifier ce rendez-vous, n'hésitez pas à nous contacter.</p>
 

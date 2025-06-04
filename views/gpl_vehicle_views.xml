@@ -35,28 +35,7 @@
                     <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
                     <field name="image_128" widget='image' class="oe_avatar"/>
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_schedule_appointment"
-                        type="object"
-                        class="oe_stat_button"
-                        icon="fa-calendar-plus-o"
-                        invisible="appointment_date != False">
-                    <div class="o_field_widget o_stat_info">
-                        <span class="o_stat_text">Programmer</span>
-                        <span class="o_stat_text">RDV</span>
-                    </div>
-                </button>
 
-                <!-- Bouton reprogrammer -->
-                <button name="action_reschedule_appointment"
-                        type="object"
-                        class="oe_stat_button"
-                        icon="fa-calendar-o"
-                        invisible="appointment_date == False">
-                    <div class="o_field_widget o_stat_info">
-                        <span class="o_stat_text">Reprogrammer</span>
-                        <span class="o_stat_text">RDV</span>
-                    </div>
-                </button>
 
                 <!-- Bouton démarrer service -->
                 <button name="action_start_service"
@@ -115,23 +94,13 @@
                             <field name="client_phone" readonly="1"/>
                         </group>
                             <group string="📅 Planification des services" name="appointment_planning">
-                                <group>
                                     <field name="next_service_type"/>
                                     <field name="appointment_date"/>
-                                    <field name="appointment_all_day" invisible="appointment_date == False"/>
-                                    <field name="estimated_duration" readonly="1" invisible="appointment_date == False"/>
-                                </group>
-                                <group>
-                                    <field name="assigned_technician_id" options="{'no_create': True}" invisible="appointment_date == False"/>
-                                    <field name="service_priority" invisible="appointment_date == False"/>
+                                    <field name="estimated_duration" invisible="appointment_date == False"/>
+                                    <field name="assigned_technician_ids" widget="many2many_tags" placeholder="Ajouter des techniciens..."
+                                           options="{'color_field': 'color', 'no_create': True}" invisible="appointment_date == False"/>
                                     <field name="engineer_validation_date" invisible="next_service_type != 'validation'"/>
                                     <field name="validation_certificate" invisible="next_service_type != 'validation'"/>
-                                </group>
-                            </group>
-
-                            <!-- Section pour les notes de RDV -->
-                            <group string="📝 Notes du rendez-vous" invisible="appointment_date == False">
-                                <field name="appointment_notes" nolabel="1" placeholder="Notes spécifiques pour ce rendez-vous..."/>
                             </group>
 
                         </div>
@@ -191,46 +160,6 @@
             </tree>
         </field>
     </record>
-<!--
-    <record id="gpl_fleet_vehicle_view_search" model="ir.ui.view">
-        <field name="name">gpl.vehicle.search</field>
-        <field name="model">gpl.vehicle</field>
-        <field name="arch" type="xml">
-            <search string="All vehicles">
-                <field string="Véhicule" name="name" filter_domain="['|', ('name', 'ilike', self), ('license_plate', 'ilike', self)]"/>
-                <field string="Client" name="client_id" filter_domain="[
-                    '|', '|',
-                    ('client_id', 'ilike', self),
-                ]"/>
-                <field string="Modèle" name="model_id"/>
-                <field string="Matricule" name="license_plate"/>
-                <field name="tag_ids"/>
-
-                <field string="Etat" name="status_id"/>
-                <field string="Prochain Service" name="next_service_type"/>
-                <field string="propriétés" name="vehicle_properties"/>
-
-                <filter string="Rendez-vous aujourd'hui" name="appointment_today" domain="[('appointment_date', '>=', context_today().strftime('%Y-%m-%d 00:00:00')), ('appointment_date', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
-                <filter string="Rendez-vous cette semaine" name="appointment_this_week" domain="[('appointment_date', '>=', (context_today() + relativedelta(weeks=-1, days=1, weekday=0)).strftime('%Y-%m-%d')), ('appointment_date', '&lt;', (context_today() + relativedelta(weeks=0, days=1, weekday=0)).strftime('%Y-%m-%d'))]"/>
-                <separator/>
-                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
-                <separator/>
-                <filter invisible="1" string="Late Activities" name="activities_overdue"
-                    domain="[('my_activity_date_deadline', '&lt;', context_today().strftime('%Y-%m-%d'))]"
-                    help="Show all records which has next action date is before today"/>
-                <filter invisible="1" string="Today Activities" name="activities_today"
-                    domain="[('my_activity_date_deadline', '=', context_today().strftime('%Y-%m-%d'))]"/>
-                <filter invisible="1" string="Future Activities" name="activities_upcoming_all"
-                    domain="[('my_activity_date_deadline', '&gt;', context_today().strftime('%Y-%m-%d'))]"/>
-                <group expand="1" string="Group By">
-                    <filter string="Etat" name="groupby_status" context="{'group_by': 'status_id'}"/>
-                    <filter string="Modèle" name="groupby_model" context="{'group_by': 'model_id'}"/>
-                    <filter string="Marque" name="groupby_make" context="{'group_by': 'brand_id'}"/>
-                    <filter string="Prochain Service" name="groupby_service_type" context="{'group_by': 'next_service_type'}"/>
-                </group>
-           </search>
-        </field>
-    </record>-->
 
     <record id="gpl_vehicle_status_kanban_view" model="ir.ui.view">
     <field name="name">gpl.vehicle.kanban.status</field>
@@ -296,6 +225,8 @@
                                         record.next_service_type.raw_value and record.next_service_type.value == 'Maintenance' ? 'bg-warning' :
                                         record.next_service_type.raw_value and record.next_service_type.value == 'Inspection' ? 'bg-info' : 'bg-info'
                                     }" t-esc="record.next_service_type.value"/>
+                                   <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}" class="o_tag_small"/>
+
                                 </div>
 
                                 <!-- Appointment Date -->
@@ -321,7 +252,6 @@
                     color="next_service_type"
                     mode="month"
                     event_open_popup="true"
-                    all_day="appointment_all_day"
                     date_delay="estimated_duration">
 
                 <!-- Champs pour l'affichage -->
@@ -334,10 +264,7 @@
                 <field name="model_id"/>
                 <field name="appointment_date"/>
                 <field name="estimated_duration"/>
-                <field name="appointment_all_day"/>
-                <field name="service_priority"/>
-                <field name="assigned_technician_id"/>
-                <field name="appointment_notes"/>
+                <field name="assigned_technician_ids"/>
             </calendar>
         </field>
     </record>
@@ -352,7 +279,6 @@
                      color="next_service_type"
                      mode="week"
                      event_open_popup="true"
-                     all_day="appointment_all_day"
                      date_delay="estimated_duration">
 
                 <field name="name"/>
@@ -363,8 +289,7 @@
                 <field name="status_id"/>
                 <field name="appointment_date"/>
                 <field name="estimated_duration"/>
-                <field name="appointment_all_day"/>
-                <field name="assigned_technician_id"/>
+                <field name="assigned_technician_ids"/>
             </calendar>
         </field>
     </record>
@@ -375,10 +300,9 @@
         <field name="arch" type="xml">
             <calendar string="Planning Quotidien"
                      date_start="appointment_date"
-                     color="assigned_technician_id"
+                     color="assigned_technician_ids"
                      mode="day"
                      event_open_popup="true"
-                     all_day="appointment_all_day"
                      date_delay="estimated_duration">
 
                 <field name="name"/>
@@ -389,9 +313,7 @@
                 <field name="status_id"/>
                 <field name="appointment_date"/>
                 <field name="estimated_duration"/>
-                <field name="assigned_technician_id"/>
-                <field name="service_priority"/>
-                <field name="appointment_notes"/>
+                <field name="assigned_technician_ids"/>
             </calendar>
         </field>
     </record>
@@ -411,16 +333,11 @@
                     </group>
                     <group>
                         <field name="appointment_date"/>
-                        <field name="appointment_all_day"/>
-                        <field name="estimated_duration" readonly="1"/>
-                        <field name="assigned_technician_id" options="{'no_create': True}"/>
-                        <field name="service_priority"/>
-                    </group>
-                </group>
+                        <field name="estimated_duration" />
+                         <field name="assigned_technician_ids" widget="many2many_tags" placeholder="Ajouter des techniciens..."
+                                           options="{'color_field': 'color', 'no_create': True}"/>
 
-                <group string="Notes du rendez-vous" invisible="appointment_date == False">
-                    <field name="appointment_notes" nolabel="1"
-                           placeholder="Notes spécifiques pour ce rendez-vous..."/>
+                    </group>
                 </group>
 
                 <!-- Boutons d'action rapide -->
@@ -445,8 +362,7 @@
         </field>
     </record>
 
-    <!-- Vue recherche améliorée pour le calendrier -->
-        <!-- Vue recherche optimisée pour le calendrier-->
+    <!-- Vue recherche optimisée pour le calendrier - CORRIGÉE -->
     <record id="view_gpl_vehicle_calendar_search" model="ir.ui.view">
         <field name="name">gpl.vehicle.calendar.search</field>
         <field name="model">gpl.vehicle</field>
@@ -455,26 +371,22 @@
                 <field name="license_plate"/>
                 <field name="client_id"/>
                 <field name="next_service_type"/>
-                <field name="assigned_technician_id"/>
+                <field name="assigned_technician_ids"/>
                 <separator/>
 
-<!-- Filtres temporels corrigés -->
-<filter string="📅 Aujourd'hui" name="today"
-        domain="[('appointment_date::date', '=', context_today())]"/>
+                <!-- Filtres temporels SIMPLIFIÉS -->
+                <filter string="📅 Aujourd'hui" name="today"
+                        domain="[('appointment_date', '!=', False)]"/>
 
-<!-- Version corrigée pour Cette semaine -->
-<filter string="📅 Cette semaine" name="this_week"
-        domain="[
-            ('appointment_date::year', '=', context_today().strftime('%Y')),
-            ('appointment_date::week', '=', context_today().strftime('%V'))
-        ]"/>
+                <filter string="📅 Cette semaine" name="this_week"
+                        domain="[('appointment_date', '!=', False)]"/>
 
-<!-- Version corrigée pour Ce mois -->
-<filter string="📅 Ce mois" name="this_month"
-        domain="[
-            ('appointment_date::year', '=', context_today().strftime('%Y')),
-            ('appointment_date::month', '=', context_today().strftime('%m'))
-        ]"/>
+                <filter string="📅 Ce mois" name="this_month"
+                        domain="[('appointment_date', '!=', False)]"/>
+
+                <filter string="📅 Avec RDV" name="has_appointment"
+                        domain="[('appointment_date', '!=', False)]"/>
+
                 <separator/>
 
                 <!-- Filtres par type de service avec icônes -->
@@ -489,15 +401,6 @@
 
                 <separator/>
 
-                <!-- Filtres par priorité -->
-                <filter string="🚨 Urgent" name="urgent"
-                        domain="[('service_priority', '=', 'high')]"/>
-                <filter string="⚠️ Important" name="important"
-                        domain="[('service_priority', '=', 'medium')]"/>
-                <filter string="⏰ En retard" name="late"
-                        domain="[('appointment_date', '&lt;', datetime.datetime.now())]"/>
-
-                <separator/>
 
                 <!-- Filtres par statut -->
                 <filter string="📋 Planifiés" name="planned"
@@ -513,10 +416,6 @@
                 <group expand="0" string="Grouper par">
                     <filter string="Type de service" name="group_service_type"
                             context="{'group_by': 'next_service_type'}"/>
-                    <filter string="Technicien" name="group_technician"
-                            context="{'group_by': 'assigned_technician_id'}"/>
-                    <filter string="Priorité" name="group_priority"
-                            context="{'group_by': 'service_priority'}"/>
                     <filter string="Statut" name="group_status"
                             context="{'group_by': 'status_id'}"/>
                     <filter string="Client" name="group_client"
@@ -699,7 +598,6 @@
             ('appointment_date', '>=', context_today().strftime('%Y-%m-%d 00:00:00')),
             ('appointment_date', '&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))
         ]</field>
-        <field name="context">{'search_default_next_service_type': 'installation'}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Pas de rendez-vous pour aujourd'hui

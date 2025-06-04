@@ -105,11 +105,6 @@
                             }
                         </style>
 
-                        <!-- Filigrane en arrière-plan -->
-                        <!--<div class="watermark">
-                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" alt="Logo"/>
-                        </div>-->
-
                         <!-- En-tête du certificat -->
                         <div class="certificate-header row">
                             <div class="col-3 text-left">
@@ -163,8 +158,8 @@
                                     </t>
                                 </div>
                                 <div class="col-6"><strong>Fabriqué en:</strong>
-                                    <t t-if="o.reservoir_lot_id and o.reservoir_lot_id.certification_date">
-                                        <span style="margin-left:5px;" t-field="o.reservoir_lot_id.certification_date.year"/>
+                                    <t t-if="o.reservoir_lot_id and o.reservoir_lot_id.manufacturing_date">
+                                        <span style="margin-left:5px;" t-esc="o.reservoir_lot_id.manufacturing_date.year"/>
                                     </t>
                                 </div>
                             </div>
@@ -182,13 +177,13 @@
                             </div>
                             <div class="row mt-2">
                                 <div class="col-6"><strong>Épreuve du:</strong>
-                                    <t t-if="o.reservoir_lot_id and o.reservoir_lot_id.certification_date">
-                                        <span style="margin-left:5px;" t-field="o.reservoir_lot_id.certification_date" t-options="{'format': 'MM/yyyy'}"/>
+                                    <t t-if="o.reservoir_lot_id and o.reservoir_lot_id.last_test_date">
+                                        <span style="margin-left:5px;" t-field="o.reservoir_lot_id.last_test_date" t-options="{'format': 'MM/yyyy'}"/>
                                     </t>
                                 </div>
                                 <div class="col-6"><strong>À réeprouver avant le:</strong>
-                                    <t t-if="o.reservoir_lot_id and o.reservoir_lot_id.expiry_date">
-                                        <span style="margin-left:5px;" t-field="o.reservoir_lot_id.expiry_date" t-options="{'format': 'MM/yyyy'}"/>
+                                    <t t-if="o.reservoir_lot_id and o.reservoir_lot_id.next_test_date">
+                                        <span style="margin-left:5px;" t-field="o.reservoir_lot_id.next_test_date" t-options="{'format': 'MM/yyyy'}"/>
                                     </t>
                                 </div>
                             </div>
@@ -231,8 +226,8 @@
                                 <div class="col-6 text-center">
                                     <p><strong>L'installateur</strong></p>
                                     <div class="signature-area"></div>
-                                    <span t-if="o.technician_ids">
-                                        <span t-field="o.technician_ids.name"/>
+                                    <span t-if="o.company_id.name">
+                                        <span t-field="o.company_id.name"/>
                                     </span>
                                 </div>
                                 <div class="col-6 text-center">

@@ -14,7 +14,6 @@ from . import gpl_reservoir_fabriquant
 from . import gpl_vehicle
 from . import gpl_reschedule_wizard
 from . import gpl_vehicle_tag
-from . import gpl_vehicle_odometer
 
 # === SERVICES ET OPÉRATIONS ===
 from . import gpl_service
@@ -24,6 +23,7 @@ from . import gpl_reservoir_testing
 
 # === ASSISTANTS ET WIZARDS ===
 from . import gpl_existing_installation_wizard
+from . import gpl_bordereau_wizard
 
 # === DASHBOARDS ET ANALYSES ===
 from . import gpl_reservoir_dashboard

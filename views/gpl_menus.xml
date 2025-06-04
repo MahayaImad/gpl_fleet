@@ -7,9 +7,8 @@
         <field name="target">current</field>
     </record>
 
-
     <!-- Menu racine principal -->
-    <menuitem id="gpl_menu_root" name="Installation GPL" sequence="1" />
+    <menuitem id="gpl_menu_root" name="Installation GPL" sequence="2" />
 
     <!-- Menu Atelier GPL -->
     <menuitem name="Atelier GPL" parent="gpl_menu_root" id="gpl_fleet_vehicles" sequence="2" />
@@ -20,14 +19,9 @@
               name="Véhicules"
               id="gpl_fleet_vehicle_menu" sequence="0"/>
 
-    <menuitem id="menu_today_appointments"
-              name="RDV du jour"
-              parent="gpl_fleet_vehicles"
-              action="action_today_appointments"
-              sequence="1"/>
 
     <menuitem id="menu_gpl_planning_section"
-              name="📅 Planning Atelier"
+              name="─── Planning Atelier ───"
               parent="gpl_fleet_vehicles"
               sequence="1"/>
 
@@ -50,16 +44,17 @@
               action="action_today_appointments"
               sequence="30"/>
 
+
     <!-- Séparateur -->
     <menuitem id="menu_gpl_planning_separator"
               name="─── Actions Rapides ───"
-              parent="menu_gpl_planning_section"
-              sequence="40"/>
+              parent="gpl_fleet_vehicles"
+              sequence="3"/>
 
     <!-- Actions rapides -->
     <menuitem id="menu_gpl_quick_appointment"
-              name="➕ Nouveau RDV"
-              parent="menu_gpl_planning_section"
+              name="Nouveau RDV"
+              parent="menu_gpl_planning_separator"
               action="action_gpl_quick_appointment_wizard"
               sequence="50"/>
 
@@ -91,7 +86,7 @@
               sequence="40"/>
 
 
-<!-- === SECTION RÉSERVOIRS GPL AMÉLIORÉE === -->
+    <!-- === SECTION RÉSERVOIRS GPL AMÉLIORÉE === -->
     <menuitem name="Réservoirs GPL"
               parent="gpl_menu_root"
               id="gpl_reservoir_menu_section"
@@ -270,6 +265,20 @@
               action="action_gpl_setup_wizard"
               sequence="1"
               groups="base.group_system"/>
+
+    <menuitem name="Bordereaux" parent="gpl_fleet_configuration" id="gpl_fleet_models_configuration_bordereaux" sequence="10"/>
+
+    <menuitem id="menu_gpl_installations_ready_sending"
+              name="Prêtes pour envoi"
+              parent="gpl_fleet_models_configuration_bordereaux"
+              action="action_gpl_installations_ready_for_sending"
+              sequence="55"/>
+
+    <menuitem id="menu_gpl_bordereau_history"
+              name="Historique bordereaux"
+              parent="gpl_fleet_models_configuration_bordereaux"
+              action="action_gpl_bordereau_history"
+              sequence="65"/>
 
     <menuitem name="Models" parent="gpl_fleet_configuration" id="gpl_fleet_models_configuration" sequence="10"/>
     <menuitem action="gpl_fleet_vehicle_model_brand_action" parent="gpl_fleet_models_configuration" id="gpl_fleet_vehicle_model_brand_menu" sequence="1"/>

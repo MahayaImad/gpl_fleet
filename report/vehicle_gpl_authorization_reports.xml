@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_gpl_authorization_template">
+        <t t-call="web.basic_layout">
+            <t t-foreach="docs" t-as="doc">
+                <div class="page">
+                    <style>
+                            /* Styles pour les caractères accentués */
+                            @font-face {
+                                font-family: 'Roboto';
+                                src: url('/web/static/lib/roboto/fonts/Roboto-Regular.ttf') format('truetype');
+                                font-weight: normal;
+                                font-style: normal;
+                            }
+                            body {
+                                font-family: 'Roboto', sans-serif;
+                            }
+                            .no-margin {
+                                margin: 0 0 0 0;
+                                padding: 0;
+                            }
+                            .section-espace {
+                                margin: 25px 0;
+                            }
+                            .margin-top {
+                                margin: 70px 0 0 0;
+                            }
+                            .margin-left-right{
+                                margin: O 70px;
+                            }
+                            .table-box {
+                                border: 2px dotted #ddd;
+                                border-radius: 8px;
+                                padding: 8px;
+                            }
+                    </style>
+                    <!-- Header -->
+                    <div class="text-center">
+                        <p class="no-margin">République Algérienne Démocratique et Populaire</p>
+                        <p class="no-margin">------------------------------------</p>
+                        <p class="no-margin"><strong>MINISTERE DE L'INDUSTRIE</strong></p>
+                        <p class="no-margin">------------------------------------</p>
+                        <p class="no-margin">Direction de l'industrie et des Mines</p>
+                        <div class="section-espace"/>
+                        <h4 class="margin-top">AUTORISATION D'UTILISATION DU GPL</h4>
+                        <p>(Décret No. 83/496 du 13/08/83)</p>
+                    </div>
+
+
+                    <!-- Vehicle and Owner Information -->
+                    <div class="row mt-3">
+                        <div class="col-12 margin-top">
+                            <p>Véhicule Immatriculé :    <strong t-field="doc.vehicle_id.license_plate"/></p>
+                            <p>Appartenant à :           <strong t-field="doc.vehicle_id.client_id.name"/></p>
+                        </div>
+                    </div>
+
+                    <!-- Main Information Table -->
+                    <div class="row mt-4">
+                        <div class="col-12 table-box">
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th class="text-center align-middle" style="width: 33%;">VEHICULE</th>
+                                    <th class="text-center align-middle" style="width: 33%;">RESERVOIR GPL</th>
+                                    <th class="text-center align-middle" style="width: 33%;">BUREAU DE L'INDUSTRIE DE :
+                                    <p><strong t-field="doc.company_id.city"/></p></th>
+                                </tr>
+                                <tr>
+                                    <td class="text-left align-middle">
+                                        <p>MARQUE: <strong t-field="doc.vehicle_id.model_id.brand_id.name"/></p>
+                                        <p>TYPE: <strong t-field="doc.vehicle_id.vehicle_type_code"/></p>
+                                        <p>SERIE N°: <strong t-field="doc.vehicle_id.vin_sn"/></p>
+                                        <p>ANNEE: <strong t-field="doc.vehicle_id.model_year"/></p>
+                                    </td>
+                                    <td class="text-left align-middle">
+                                        <p>N°: <strong t-field="doc.reservoir_lot_id.name"/></p>
+                                        <p>FABRIQUE EN:
+                                            <t t-if="doc.reservoir_lot_id.manufacturing_date">
+                                                <strong t-esc="doc.reservoir_lot_id.manufacturing_date.year" />
+                                            </t>
+                                        </p>
+                                        <p>A EPROUVER</p>
+                                        <p>AVANT LE:
+                                            <t t-if="doc.reservoir_lot_id.next_test_date">
+                                                <strong t-field="doc.reservoir_lot_id.next_test_date" t-options="{'format': 'MM/yyyy'}"/>
+                                            </t>
+                                        </p>
+                                    </td>
+                                    <td class="text-left align-middle">
+                                        <p>CONTROLE TECHNIQUE</p>
+                                        <p>DU: </p>
+                                        <p>L'EXPERT:</p>
+                                        <p>CACHET</p>
+                                        <p>SIGNATURE</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3">
+                                        <span>VEHICULE A PRESENTER AU CONTROLE TECHNIQUE AVANT :</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Additional Instructions -->
+                    <div class="margin-top">
+                        <div class="row mt-4">
+                            <div class="col-2 margin-top"/>
+                            <div class="col-8 text-center">
+                                <p style="text-align: center;">
+                                    Toutes modification ou réparation intervenant sur une installation au GPL
+                                    équipant un véhicule automobile doit faire l'objet d'un agrément conformé-
+                                    ment aux préscriptions du décret No 83/496 relatif aux conditions d'utilisation
+                                    et des distribution du GPL - Carburant sur les véhicules automobiles.
+                                </p>
+                            </div>
+                            <div class="col-2"/>
+                        </div>
+                    </div>
+
+                    <!-- Special Instructions -->
+                    <div class="row mt-4">
+                        <div class="col-2"/>
+                        <div class="col-8 text-center">
+                            <h5>CONSIGNES PARTICULIERES</h5>
+                            <p style="text-align: center;">
+                                A l'issue de chaque chargement, il importe d'aérer suffisamment et efficacement
+                                aussi bien le coffre que l'habitacle.
+                                Durant cette opération, les passagers et le conducteur devront s'abstenir d'uti-
+                                liser ou de provoquer toute flamme ou étincelle pour quelque motif que ce soit.
+                            </p>
+                        </div>
+                        <div class="col-2"/>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

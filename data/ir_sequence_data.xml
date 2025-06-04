@@ -34,6 +34,15 @@
             <field name="company_id" eval="False"/>
         </record>
 
+        <!-- Séquence pour les bordereaux d'envoi -->
+        <record id="seq_gpl_bordereau" model="ir.sequence">
+            <field name="name">Séquence Bordereau d'Envoi GPL</field>
+            <field name="code">gpl.bordereau</field>
+            <field name="prefix">BOR/</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
         <!-- Statuts de véhicules mis à jour -->
         <record id="vehicle_status_nouveau" model="gpl.vehicle.status">
             <field name="name">Enregistré</field>
@@ -72,19 +81,34 @@
         </record>
 
         <!-- Tags pour véhicules -->
-        <record id="tag_gpl_repair" model="gpl.vehicle.tag">
-            <field name="name">Réparation GPL</field>
+        <record id="tag_urgent" model="gpl.vehicle.tag">
+            <field name="name">🚨 URGENT</field>
+            <field name="color">1</field>
+        </record>
+
+        <record id="tag_attente_pieces" model="gpl.vehicle.tag">
+            <field name="name">📦 Attente Pièces</field>
+            <field name="color">8</field>
+        </record>
+
+        <record id="tag_client_vip" model="gpl.vehicle.tag">
+            <field name="name">⭐ Client VIP</field>
+            <field name="color">9</field>
+        </record>
+
+        <record id="tag_probleme_recurrent" model="gpl.vehicle.tag">
+            <field name="name">🔄 Problème Récurrent</field>
+            <field name="color">1</field>
+        </record>
+
+        <record id="tag_rappel" model="gpl.vehicle.tag">
+            <field name="name">📞 Rappel Client</field>
             <field name="color">3</field>
         </record>
 
-        <record id="tag_gpl_installation" model="gpl.vehicle.tag">
-            <field name="name">Installation GPL</field>
+        <record id="tag_garantie" model="gpl.vehicle.tag">
+            <field name="name">🛡️ Sous Garantie</field>
             <field name="color">2</field>
-        </record>
-
-        <record id="tag_gpl_maintenance" model="gpl.vehicle.tag">
-            <field name="name">Maintenance GPL</field>
-            <field name="color">4</field>
         </record>
 
         <!-- Fabricants de réservoirs par défaut -->
