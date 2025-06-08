@@ -242,10 +242,60 @@
         <field name="model">gpl.reservoir.dashboard</field>
         <field name="arch" type="xml">
             <form string="Tableau de bord Réservoirs GPL" create="false" edit="false">
+                <header>
+                    <button name="action_new_reservoir_product" type="object"
+                            class="btn btn-primary" string="Nouveau Réservoir"
+                            icon="fa-plus"/>
+                    <button name="action_view_stock_reservoirs" type="object"
+                            class="btn btn-success" string="Stock Disponible"
+                            icon="fa-warehouse"/>
+                    <button name="action_view_control_needed" type="object"
+                            class="btn btn-warning" string="Contrôles Urgents"
+                            icon="fa-exclamation-triangle"/>
+                    <button name="action_refresh_stats" type="object"
+                            class="btn btn-info" string="Actualiser"
+                            icon="fa-refresh"/>
+                    <button name="action_export_reservoir_report" type="object"
+                            class="btn btn-secondary" string="Exporter Rapport"
+                            icon="fa-file-pdf-o"/>
+                </header>
                 <sheet>
                     <div class="oe_title">
                         <h1><i class="fa fa-chart-simple text-primary" title=" " /> Tableau de bord Réservoirs GPL</h1>
                     </div>
+
+                    <!-- Actions rapides
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fa fa-bolt" title=" " /> Actions rapides</h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <button name="action_new_reservoir_product" type="object"
+                                            class="btn btn-primary me-2">
+                                        <i class="fa fa-plus" title=" " /> Nouveau Réservoir
+                                    </button>
+                                    <button name="action_view_stock_reservoirs" type="object"
+                                            class="btn btn-success me-2">
+                                        <i class="fa fa-warehouse" title=" " /> Stock Disponible
+                                    </button>
+                                    <button name="action_view_control_needed" type="object"
+                                            class="btn btn-warning me-2">
+                                        <i class="fa fa-exclamation-triangle" title=" " /> Contrôles Urgents
+                                    </button>
+                                    <button name="action_refresh_stats" type="object"
+                                            class="btn btn-info me-2">
+                                        <i class="fa fa-refresh" title=" " /> Actualiser
+                                    </button>
+                                    <button name="action_export_reservoir_report" type="object"
+                                            class="btn btn-secondary">
+                                        <i class="fa fa-file-pdf-o" title=" " /> Exporter Rapport
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>-->
 
                     <!-- Statistiques principales -->
                     <div class="row mt-4">
@@ -475,38 +525,6 @@
                         </div>
                     </div>
 
-                    <!-- Actions rapides -->
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5><i class="fa fa-bolt" title=" " /> Actions rapides</h5>
-                                </div>
-                                <div class="card-body text-center">
-                                    <button name="action_new_reservoir_product" type="object"
-                                            class="btn btn-primary me-2">
-                                        <i class="fa fa-plus" title=" " /> Nouveau Réservoir
-                                    </button>
-                                    <button name="action_view_stock_reservoirs" type="object"
-                                            class="btn btn-success me-2">
-                                        <i class="fa fa-warehouse" title=" " /> Stock Disponible
-                                    </button>
-                                    <button name="action_view_control_needed" type="object"
-                                            class="btn btn-warning me-2">
-                                        <i class="fa fa-exclamation-triangle" title=" " /> Contrôles Urgents
-                                    </button>
-                                    <button name="action_refresh_stats" type="object"
-                                            class="btn btn-info me-2">
-                                        <i class="fa fa-refresh" title=" " /> Actualiser
-                                    </button>
-                                    <button name="action_export_reservoir_report" type="object"
-                                            class="btn btn-secondary">
-                                        <i class="fa fa-file-pdf-o" title=" " /> Exporter Rapport
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </sheet>
             </form>
         </field>
@@ -555,7 +573,7 @@
         <field name="res_model">gpl.reservoir.dashboard</field>
         <field name="view_mode">form</field>
         <field name="view_id" ref="view_gpl_reservoir_dashboard_form"/>
-        <field name="target">inline</field>
+        <field name="target">current</field>
     </record>
 
     <!-- Action principale pour les réservoirs GPL -->

@@ -105,15 +105,15 @@
         <table>
             <tr>
                 <td>Nom / Prénom :</td>
-                <td class ="gris-small">ALLAM ABDELAALI</td>
+                <td class ="gris-small"><span t-out="o.partner_id.name" /></td>
             </tr>
             <tr>
                 <td>Adresse :</td>
-                <td class ="gris-small">CHECHAR, CHECHAR, KHENCHELA</td>
+                <td class ="gris-small"><span t-out="o.partner_id.contact_address" /> </td>
             </tr>
             <tr>
                 <td>Tél :</td>
-                <td class ="gris-small">0657850681</td>
+                <td class ="gris-small"><span t-out="o.partner_id.phone" /> </td>
             </tr>
         </table>
     </div>
