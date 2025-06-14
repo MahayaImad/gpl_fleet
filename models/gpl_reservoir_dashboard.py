@@ -1,10 +1,33 @@
 from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 from datetime import datetime, timedelta
 
 
-class GplReservoirDashboard(models.TransientModel):
+class GplReservoirDashboard(models.Model):
     _name = 'gpl.reservoir.dashboard'
     _description = 'Dashboard pour réservoirs GPL'
+
+    name = fields.Char(string='Nom', default='Tableau de bord Réservoirs GPL', required=True)
+
+    @api.model
+    def action_open_dashboard(self):
+        """Action pour ouvrir le dashboard (crée l'enregistrement s'il n'existe pas)"""
+        dashboard = self.search([], limit=1)
+        if not dashboard:
+            dashboard = self.create({'name': 'Tableau de bord Réservoirs GPL'})
+
+        return {
+            'name': 'Tableau de bord Réservoirs GPL',
+            'type': 'ir.actions.act_window',
+            'res_model': 'gpl.reservoir.dashboard',
+            'res_id': dashboard.id,
+            'view_mode': 'form',
+            'view_id': self.env.ref('votre_module.view_gpl_reservoir_dashboard_form').id,
+            'target': 'current',
+        }
+
+    def name_get(self):
+        return [(rec.id, 'Tableau de bord Réservoirs GPL') for rec in self]
 
     # Statistiques calculées
     total_reservoirs = fields.Integer(string='Total réservoirs', compute='_compute_statistics')
@@ -25,34 +48,38 @@ class GplReservoirDashboard(models.TransientModel):
 
     @api.depends()
     def _compute_statistics(self):
-        """Calcule les statistiques principales"""
+        """Calcule les statistiques principales avec actualisation automatique"""
+        # ACTUALISATION AUTOMATIQUE - ajoutez ces 6 lignes au début
+        reservoirs = self.env['stock.lot'].search([('is_gpl_reservoir', '=', True)])
+        for reservoir in reservoirs:
+            reservoir._compute_state()
+            reservoir._compute_age_info()
+            reservoir._compute_test_info()
+            reservoir._compute_location_status()
+
+        # VOTRE CODE EXISTANT reste identique
         for dashboard in self:
             StockLot = self.env['stock.lot']
 
-            # Total des réservoirs GPL
             dashboard.total_reservoirs = StockLot.search_count([
                 ('is_gpl_reservoir', '=', True)
             ])
 
-            # Réservoirs en stock
             dashboard.reservoirs_in_stock = StockLot.search_count([
                 ('is_gpl_reservoir', '=', True),
                 ('location_status', '=', 'stock')
             ])
 
-            # Réservoirs installés
             dashboard.reservoirs_installed = StockLot.search_count([
                 ('is_gpl_reservoir', '=', True),
                 ('location_status', '=', 'installed')
             ])
 
-            # Réservoirs nécessitant un contrôle
             dashboard.reservoirs_need_control = StockLot.search_count([
                 ('is_gpl_reservoir', '=', True),
                 ('state', 'in', ['expiring_soon', 'test_required'])
             ])
 
-            # Réservoirs trop anciens
             dashboard.reservoirs_too_old = StockLot.search_count([
                 ('is_gpl_reservoir', '=', True),
                 ('state', '=', 'too_old')
@@ -60,7 +87,16 @@ class GplReservoirDashboard(models.TransientModel):
 
     @api.depends()
     def _compute_age_distribution(self):
-        """Calcule la répartition par âge"""
+        """Calcule la répartition par âge avec actualisation automatique"""
+        # ACTUALISATION AUTOMATIQUE - ajoutez ces 6 lignes au début
+        reservoirs = self.env['stock.lot'].search([('is_gpl_reservoir', '=', True)])
+        for reservoir in reservoirs:
+            reservoir._compute_state()
+            reservoir._compute_age_info()
+            reservoir._compute_test_info()
+            reservoir._compute_location_status()
+
+        # VOTRE CODE EXISTANT reste identique
         for dashboard in self:
             StockLot = self.env['stock.lot']
 
@@ -88,17 +124,24 @@ class GplReservoirDashboard(models.TransientModel):
 
     @api.depends()
     def _compute_alerts(self):
-        """Calcule les alertes"""
+        """Calcule les alertes avec actualisation automatique"""
+        # ACTUALISATION AUTOMATIQUE - ajoutez ces 6 lignes au début
+        reservoirs = self.env['stock.lot'].search([('is_gpl_reservoir', '=', True)])
+        for reservoir in reservoirs:
+            reservoir._compute_state()
+            reservoir._compute_age_info()
+            reservoir._compute_test_info()
+            reservoir._compute_location_status()
+
+        # VOTRE CODE EXISTANT reste identique
         for dashboard in self:
             StockLot = self.env['stock.lot']
 
-            # Réépreuve immédiate (en retard)
             dashboard.immediate_retest = StockLot.search_count([
                 ('is_gpl_reservoir', '=', True),
                 ('days_until_next_test', '<=', 0)
             ])
 
-            # Réépreuve dans 6 mois
             dashboard.retest_6_months = StockLot.search_count([
                 ('is_gpl_reservoir', '=', True),
                 ('days_until_next_test', '>', 0),
@@ -226,14 +269,15 @@ class GplReservoirDashboard(models.TransientModel):
         }
 
     def action_export_reservoir_report(self):
-        """Action pour exporter un rapport des réservoirs"""
-        return {
-            'name': _('Rapport réservoirs GPL'),
-            'type': 'ir.actions.report',
-            'report_name': 'gpl_fleet.report_gpl_reservoir_list',
-            'report_type': 'qweb-pdf',
-            'context': self.env.context,
-        }
+        """Action pour exporter un rapport de tous les réservoirs GPL"""
+        # Récupérer tous les réservoirs GPL
+        reservoirs = self.env['stock.lot'].search([('is_gpl_reservoir', '=', True)], order='name')
+
+        if not reservoirs:
+            raise UserError(_("Aucun réservoir GPL trouvé pour générer le rapport."))
+
+        # Utiliser directement report_action sur les réservoirs
+        return self.env.ref('gpl_fleet.action_export_reservoir_report').report_action(reservoirs)
 
     @api.model
     def get_dashboard_data(self):

@@ -149,8 +149,8 @@ class GplQuickAppointmentWizard(models.TransientModel):
             technician_names = ', '.join(self.technician_ids.mapped('name'))
             message += f"\n• Techniciens: {technician_names}"
 
-        if self.notes:
-            message += f"\n• Notes: {self.notes}"
+        # if self.notes:
+        #     message += f"\n• Notes: {self.notes}"
 
         self.vehicle_id.message_post(body=message)
 
